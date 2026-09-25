@@ -1,0 +1,33 @@
+{
+  "name": "ecobite-backend",
+  "version": "1.0.0",
+  "description": "Proyecto de startup de FoodTech que busca revolucionar la industria del delivery",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Talently-Lab/s2606-ecobite.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Talently-Lab/s2606-ecobite/issues"
+  },
+  "homepage": "https://github.com/Talently-Lab/s2606-ecobite#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.3",
+    "express": "^5.2.1",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

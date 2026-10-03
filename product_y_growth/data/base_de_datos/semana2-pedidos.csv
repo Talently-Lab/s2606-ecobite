@@ -1,0 +1,61 @@
+﻿id_pedido,fecha,id_restaurante,zona,distancia_km,monto_total,co2_ahorrado_kg,estado,tipo_transporte
+1,2026-09-01,1,Palermo,2.50,12800.00,0.43,completed,bike
+2,2026-09-02,2,Belgrano,4.00,15300.00,0.68,completed,bike
+3,2026-09-03,3,Caballito,3.20,9000.00,0.54,completed,bike
+4,2026-09-04,4,San Telmo,1.80,12100.00,0.31,completed,bike
+5,2026-09-05,5,Nunez,5.50,19200.00,0.00,pending,bike
+6,2026-09-06,6,Almagro,2.80,4500.00,0.48,completed,bike
+7,2026-09-07,7,Palermo,2.50,12800.00,0.43,completed,bike
+8,2026-09-08,8,Caballito,3.20,15300.00,0.00,cancelled,bike
+9,2026-09-09,1,Palermo,2.50,9000.00,0.43,completed,bike
+10,2026-09-10,2,Belgrano,4.00,12100.00,0.68,completed,bike
+11,2026-09-11,3,Caballito,3.20,19200.00,0.54,completed,bike
+12,2026-09-12,4,San Telmo,1.80,4500.00,0.00,pending,bike
+13,2026-09-13,5,Nunez,5.50,12800.00,0.94,completed,bike
+14,2026-09-14,6,Almagro,2.80,15300.00,0.48,completed,bike
+15,2026-09-15,7,Palermo,2.50,9000.00,0.43,completed,bike
+16,2026-09-16,8,Caballito,3.20,12100.00,0.00,cancelled,bike
+17,2026-09-17,1,Palermo,2.50,19200.00,0.43,completed,bike
+18,2026-09-18,2,Belgrano,4.00,4500.00,0.00,pending,bike
+19,2026-09-19,3,Caballito,3.20,12800.00,0.54,completed,bike
+20,2026-09-20,4,San Telmo,1.80,15300.00,0.31,completed,bike
+21,2026-09-21,5,Nunez,5.50,9000.00,0.94,completed,bike
+22,2026-09-22,6,Almagro,2.80,12100.00,0.48,completed,bike
+23,2026-09-23,7,Palermo,2.50,19200.00,0.43,completed,bike
+24,2026-09-24,8,Caballito,3.20,4500.00,0.00,pending,bike
+25,2026-09-25,1,Palermo,2.50,12800.00,0.43,completed,bike
+26,2026-09-26,2,Belgrano,4.00,15300.00,0.68,completed,bike
+27,2026-09-27,3,Caballito,3.20,9000.00,0.00,cancelled,bike
+28,2026-09-28,4,San Telmo,1.80,12100.00,0.31,completed,bike
+29,2026-09-29,5,Nunez,5.50,19200.00,0.94,completed,bike
+30,2026-09-30,6,Almagro,2.80,4500.00,0.48,completed,bike
+31,2026-09-01,7,Palermo,2.50,12800.00,0.00,pending,bike
+32,2026-09-02,8,Caballito,3.20,15300.00,0.54,completed,bike
+33,2026-09-03,1,Palermo,2.50,9000.00,0.43,completed,bike
+34,2026-09-04,2,Belgrano,4.00,12100.00,0.68,completed,bike
+35,2026-09-05,3,Caballito,3.20,19200.00,0.00,cancelled,bike
+36,2026-09-06,4,San Telmo,1.80,4500.00,0.31,completed,bike
+37,2026-09-07,5,Nunez,5.50,12800.00,0.00,pending,bike
+38,2026-09-08,6,Almagro,2.80,15300.00,0.48,completed,bike
+39,2026-09-09,7,Palermo,2.50,9000.00,0.43,completed,bike
+40,2026-09-10,8,Caballito,3.20,12100.00,0.54,completed,bike
+41,2026-09-11,1,Palermo,2.50,19200.00,0.43,completed,bike
+42,2026-09-12,2,Belgrano,4.00,4500.00,0.00,cancelled,bike
+43,2026-09-13,3,Caballito,3.20,12800.00,0.54,completed,bike
+44,2026-09-14,4,San Telmo,1.80,15300.00,0.00,pending,bike
+45,2026-09-15,5,Nunez,5.50,9000.00,0.94,completed,bike
+46,2026-09-16,6,Almagro,2.80,12100.00,0.48,completed,bike
+47,2026-09-17,7,Palermo,2.50,19200.00,0.00,cancelled,bike
+48,2026-09-18,8,Caballito,3.20,4500.00,0.54,completed,bike
+49,2026-09-19,1,Palermo,2.50,12800.00,0.00,pending,bike
+50,2026-09-20,2,Belgrano,4.00,15300.00,0.68,completed,bike
+51,2026-09-21,3,Caballito,3.20,9000.00,0.54,completed,bike
+52,2026-09-22,4,San Telmo,1.80,12100.00,0.31,completed,bike
+53,2026-09-23,5,Nunez,5.50,19200.00,0.00,pending,bike
+54,2026-09-24,6,Almagro,2.80,4500.00,0.48,completed,bike
+55,2026-09-25,7,Palermo,2.50,12800.00,0.00,cancelled,bike
+56,2026-09-26,8,Caballito,3.20,15300.00,0.54,completed,bike
+57,2026-09-27,1,Palermo,2.50,9000.00,0.43,completed,bike
+58,2026-09-28,2,Belgrano,4.00,12100.00,0.00,pending,bike
+59,2026-09-29,3,Caballito,3.20,19200.00,0.54,completed,bike
+60,2026-09-30,4,San Telmo,1.80,4500.00,0.00,cancelled,bike

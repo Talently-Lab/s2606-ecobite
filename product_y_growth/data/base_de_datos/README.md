@@ -4,6 +4,13 @@ Dataset ficticio y esquema Postgres para Supabase. La app todavía no tiene usua
 
 La moneda de `total` es ARS. En el CSV y en el SQL los importes van sin símbolo (`12800.00`) y las fechas del CSV van en `YYYY-MM-DD`.
 
+
+## Diagrama en Supabase
+
+Modelo cargado en Supabase a partir de `001_schema.sql`.
+
+![Diagrama entidad-relación en Supabase](assets/erd-supabase.png)
+
 ## Fórmula de negocio
 
 Para una entrega en bici, el ahorro es lo que habría emitido un auto a nafta en la misma distancia:

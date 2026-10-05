@@ -3,14 +3,111 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model detalle_pedidos {
+  id_detalle      Int       @id @default(autoincrement())
+  id_pedido       Int
+  id_platillo     Int
+  cantidad        Int
+  precio_unitario Decimal   @db.Decimal(10, 2)
+  co2_subtotal    Decimal   @db.Decimal(8, 2)
+  tipo_envase     String    @db.VarChar(20)
+  pedidos         pedidos   @relation(fields: [id_pedido], references: [id_pedido], onDelete: NoAction, onUpdate: NoAction)
+  platillos       platillos @relation(fields: [id_platillo], references: [id_platillo], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_pedido], map: "idx_detalle_pedido")
+  @@index([id_platillo], map: "idx_detalle_platillo")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model metricas_impacto {
+  id_metrica     Int      @id @default(autoincrement())
+  id_pedido      Int      @unique
+  id_usuario     Int
+  co2_evitado_kg Decimal  @db.Decimal(8, 2)
+  fecha_calculo  DateTime @db.Timestamptz(6)
+  pedidos        pedidos  @relation(fields: [id_pedido], references: [id_pedido], onDelete: NoAction, onUpdate: NoAction)
+  usuarios       usuarios @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_usuario], map: "idx_metricas_usuario")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pedidos {
+  id_pedido              Int               @id @default(autoincrement())
+  id_usuario_cliente     Int
+  id_restaurante         Int
+  fecha_pedido           DateTime          @db.Timestamptz(6)
+  estado_simulado        String            @db.VarChar(30)
+  transporte_sin_emision String            @db.VarChar(50)
+  total                  Decimal           @db.Decimal(10, 2)
+  co2_total_ahorrado     Decimal           @db.Decimal(8, 2)
+  zona                   String            @db.VarChar(50)
+  distancia_km           Decimal           @db.Decimal(8, 2)
+  detalle_pedidos        detalle_pedidos[]
+  metricas_impacto       metricas_impacto?
+  restaurantes           restaurantes      @relation(fields: [id_restaurante], references: [id_restaurante], onDelete: NoAction, onUpdate: NoAction)
+  usuarios               usuarios          @relation(fields: [id_usuario_cliente], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_restaurante], map: "idx_pedidos_restaurante")
+  @@index([id_usuario_cliente], map: "idx_pedidos_usuario")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model platillos {
+  id_platillo       Int               @id @default(autoincrement())
+  id_restaurante    Int
+  nombre            String            @db.VarChar(100)
+  precio            Decimal           @db.Decimal(10, 2)
+  co2_ahorrado_unit Decimal           @db.Decimal(8, 2)
+  disponible        Boolean
+  detalle_pedidos   detalle_pedidos[]
+  restaurantes      restaurantes      @relation(fields: [id_restaurante], references: [id_restaurante], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_restaurante], map: "idx_platillos_restaurante")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model restaurantes {
+  id_restaurante       Int         @id @default(autoincrement())
+  id_usuario_owner     Int         @unique
+  nombre               String      @db.VarChar(120)
+  direccion            String
+  envase_biodegradable Boolean
+  indicador_eco        String      @db.VarChar(50)
+  activo               Boolean
+  pedidos              pedidos[]
+  platillos            platillos[]
+  usuarios             usuarios    @relation(fields: [id_usuario_owner], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model usuarios {
+  id_usuario       Int                @id @default(autoincrement())
+  nombre           String             @db.VarChar(100)
+  email            String             @unique @db.VarChar(150)
+  password_hash    String             @db.VarChar(255)
+  rol              rol_usuario
+  fecha_registro   DateTime           @db.Timestamptz(6)
+  metricas_impacto metricas_impacto[]
+  pedidos          pedidos[]
+  restaurantes     restaurantes?
+}
+
+enum rol_usuario {
+  cliente
+  dueno
+  admin
 }

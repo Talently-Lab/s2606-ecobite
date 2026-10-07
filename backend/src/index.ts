@@ -14,6 +14,13 @@ app.get("/", (req, res) => {
   });
 });
 
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "ecobite-api",
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor EcoBite corriendo en puerto ${PORT}`);
 });

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import prisma from "../config/db";
+import { generarToken } from "../utils/jwt";  
 
 interface RegisterInput {
   nombre: string;
@@ -41,5 +42,43 @@ export class AuthService {
     });
 
     return user;
+  }
+    async login(email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await prisma.usuarios.findUnique({
+      where: {
+        email: normalizedEmail,
+      },
+    });
+
+    if (!user) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
+
+    const passwordValid = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
+
+    if (!passwordValid) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
+
+    const token = generarToken({
+      id_usuario: user.id_usuario,
+      email: user.email,
+      rol: user.rol,
+    });
+
+    return {
+      token,
+      user: {
+        id_usuario: user.id_usuario,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+      },
+    };
   }
 }

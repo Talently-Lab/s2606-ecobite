@@ -96,4 +96,83 @@ export class AuthController {
       });
     }
   }
+    async login(req: Request, res: Response): Promise<Response> {
+        try {
+        const { email, password } = req.body;
+
+        if (
+            typeof email !== "string" ||
+            typeof password !== "string"
+        ) {
+            return res.status(400).json({
+            error: {
+                code: "INVALID_INPUT",
+                message: "Correo y contraseña son obligatorios",
+                fields: {},
+            },
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(normalizedEmail)) {
+            return res.status(400).json({
+            error: {
+                code: "INVALID_EMAIL",
+                message: "El correo electrónico no es válido",
+                fields: {
+                email: "Ingresa un correo electrónico válido",
+                },
+            },
+            });
+        }
+
+        if (!password) {
+            return res.status(400).json({
+            error: {
+                code: "INVALID_PASSWORD",
+                message: "La contraseña es obligatoria",
+                fields: {
+                password: "Ingresa tu contraseña",
+                },
+            },
+            });
+        }
+
+        const result = await authService.login(
+            normalizedEmail,
+            password
+        );
+
+        return res.status(200).json({
+            message: "Inicio de sesión exitoso",
+            ...result,
+        });
+        } catch (error) {
+        if (
+            error instanceof Error &&
+            error.message === "INVALID_CREDENTIALS"
+        ) {
+            return res.status(401).json({
+            error: {
+                code: "INVALID_CREDENTIALS",
+                message: "Correo o contraseña incorrectos",
+                fields: {},
+            },
+            });
+        }
+
+        console.error("Error en login:", error);
+
+        return res.status(500).json({
+            error: {
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Ocurrió un error interno del servidor",
+            fields: {},
+            },
+        });
+        }
+  }
 }

@@ -66,8 +66,7 @@ export class AuthService {
     }
 
     const token = generarToken({
-      id_usuario: user.id_usuario,
-      email: user.email,
+      sub: String(user.id_usuario),
       rol: user.rol,
     });
 

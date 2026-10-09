@@ -1,8 +1,7 @@
 import jwt from "jsonwebtoken";
 
 export interface JwtPayload {
-  id_usuario: number;
-  email: string;
+  sub: string;
   rol: string;
 }
 
@@ -14,11 +13,24 @@ if (!JWT_SECRET) {
 }
 
 export const generarToken = (payload: JwtPayload): string => {
-    return jwt.sign(payload, JWT_SECRET, {
-        expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
-    });
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+  });
 };
 
 export const verificarToken = (token: string): JwtPayload => {
-  return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  const decoded = jwt.verify(token, JWT_SECRET);
+
+  if (
+    typeof decoded === "string" ||
+    typeof decoded.sub !== "string" ||
+    typeof decoded.rol !== "string"
+  ) {
+    throw new Error("Payload JWT inválido");
+  }
+
+  return {
+    sub: decoded.sub,
+    rol: decoded.rol,
+  };
 };

@@ -1,1 +1,32 @@
 @import "tailwindcss";
+
+/* Paleta extendida para UI (Slides de diseño, diapositiva 11) */
+@theme {
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-bosque: #436844;
+  --color-noche: #24402a;
+  --color-terracota: #be7444;
+  --color-terracota-oscuro: #9e5a30;
+  --color-tinta: #1e2b22;
+  --color-musgo: #5a6b5e;
+  --color-crema: #f7f5ef;
+  --color-brote: #bbdb9b;
+  --color-niebla: #e3ece0;
+  --color-arena: #eef0ea;
+  --color-borde: #e2e5dd;
+  --color-error: #b3412e;
+  --color-error-suave: #f9e9e6;
+  --color-alerta: #e0a93b;
+}
+
+@layer base {
+  body {
+    @apply bg-crema font-sans text-tinta antialiased;
+  }
+
+  a {
+    @apply text-bosque hover:text-noche;
+  }
+}

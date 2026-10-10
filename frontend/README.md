@@ -40,3 +40,16 @@ Durante la primera semana se realizó:
 - Definición de Context API como estrategia inicial de estado global.
 - Creación de la arquitectura base de carpetas.
 - Planificación de componentes reutilizables principales.
+## Variables de entorno
+
+Copiar `.env.example` a `.env` y completar `VITE_API_URL` con la URL de la API.
+
+Si `VITE_API_URL` queda vacía, el login y el registro usan un mock en `localStorage` (`src/services/authService.js`). Sirve solo para desarrollar la UI mientras el backend de auth no esté listo.
+
+## Pantallas
+
+- `/login`: ingreso (EB-06).
+- `/registro`: creación de cuenta con rol `cliente` (EB-05).
+- `/`: placeholder de la Home.
+
+El contrato de auth que espera el front está documentado al inicio de `src/services/authService.js`.

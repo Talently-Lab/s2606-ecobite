@@ -31,11 +31,12 @@ git checkout frontend-dev
 git pull origin frontend-dev
 ```
 
+> Si es la primera vez, o si el pull trajo cambios en `frontend/package.json`, correr `npm install` dentro de `frontend/`. La carpeta `node_modules` no se sube al repo, así que cada dev instala las dependencias en su máquina.
+
 ### 2. Crear la rama de la feature
 
 ```bash
 git checkout -b feature/<nombre-de-la-feature>
-cd frontend && npm install
 ```
 
 ### 3. Desarrollar y commitear en local

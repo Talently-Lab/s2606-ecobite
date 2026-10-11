@@ -32,7 +32,7 @@ npm run dev
 | `npm test`             | Tests en modo watch                    |
 | `npm run test:run`     | Tests una sola vez (para CI)           |
 
-Antes de abrir un PR: `npm run format:check && npm run lint && npm run test:run && npm run build`.
+Antes de subir una feature (ver `docs/pm/flujo-de-trabajo-git.md`): `npm run format:check && npm run lint && npm run test:run && npm run build`.
 
 ## Variables de entorno
 

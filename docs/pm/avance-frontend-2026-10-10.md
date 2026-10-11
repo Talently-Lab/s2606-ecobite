@@ -72,7 +72,7 @@ Convenciones completas en [`frontend/README.md`](../../frontend/README.md).
 1. **Acceso de escritura al repo** para subir `main` y `frontend-dev`.
 2. **Backend:** revisar y acordar el contrato de auth ([../api/auth.md](../api/auth.md)) e implementarlo.
 3. **Backend:** acordar con los devs el flujo `backend-dev` (el setup más completo está en `feature/semana3-backend-setup`). Ojo: el script `prisma:migrate` corre `migrate dev` contra Supabase sin historial de migraciones.
-4. Proteger `main` y `frontend-dev` en GitHub y agregar `.gitattributes`.
+4. Proteger `main` en GitHub y agregar `.gitattributes`.
 5. Siguientes pantallas: Home, Local + carrito, Checkout, Confirmación, Mi impacto, Admin.
 6. Producto: fórmula de CO₂ (factores, línea base, distancia por zona) y definición de EB-07.
 7. Diseño: exportar las pantallas a Figma cuando se renueve el cupo del MCP (plan Starter, 20 llamadas/mes).

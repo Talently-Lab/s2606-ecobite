@@ -1,12 +1,20 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { AuthService } from "../services/auth.service";
 
 const authService = new AuthService();
 
 export class AuthController {
-  async register(req: Request, res: Response): Promise<Response> {
+  getPublicUser(id: number) {
+    return authService.getPublicUser(id);
+  }
+
+  async register(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
-      const { nombre, email, password } = req.body;
+      const { nombre, email, password } = req.body ?? {};
 
       if (
         typeof nombre !== "string" ||
@@ -35,7 +43,6 @@ export class AuthController {
       }
 
       const normalizedEmail = email.trim().toLowerCase();
-
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!emailRegex.test(normalizedEmail)) {
@@ -62,7 +69,7 @@ export class AuthController {
         });
       }
 
-      const user = await authService.register({
+      const result = await authService.register({
         nombre,
         email: normalizedEmail,
         password,
@@ -70,10 +77,13 @@ export class AuthController {
 
       return res.status(201).json({
         message: "Usuario registrado correctamente",
-        user,
+        ...result,
       });
     } catch (error) {
-      if (error instanceof Error && error.message === "EMAIL_ALREADY_EXISTS") {
+      if (
+        (error instanceof Error && error.message === "EMAIL_ALREADY_EXISTS") ||
+        (typeof error === "object" && error !== null && "code" in error && error.code === "P2002")
+      ) {
         return res.status(409).json({
           error: {
             code: "EMAIL_ALREADY_EXISTS",
@@ -85,94 +95,81 @@ export class AuthController {
         });
       }
 
-      console.error("Error en registro:", error);
-
-      return res.status(500).json({
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Ocurrió un error interno del servidor",
-          fields: {},
-        },
-      });
+      next(error);
+      return;
     }
   }
-    async login(req: Request, res: Response): Promise<Response> {
-        try {
-        const { email, password } = req.body;
 
-        if (
-            typeof email !== "string" ||
-            typeof password !== "string"
-        ) {
-            return res.status(400).json({
-            error: {
-                code: "INVALID_INPUT",
-                message: "Correo y contraseña son obligatorios",
-                fields: {},
-            },
-            });
-        }
+  async login(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { email, password } = req.body ?? {};
 
-        const normalizedEmail = email.trim().toLowerCase();
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!emailRegex.test(normalizedEmail)) {
-            return res.status(400).json({
-            error: {
-                code: "INVALID_EMAIL",
-                message: "El correo electrónico no es válido",
-                fields: {
-                email: "Ingresa un correo electrónico válido",
-                },
-            },
-            });
-        }
-
-        if (!password) {
-            return res.status(400).json({
-            error: {
-                code: "INVALID_PASSWORD",
-                message: "La contraseña es obligatoria",
-                fields: {
-                password: "Ingresa tu contraseña",
-                },
-            },
-            });
-        }
-
-        const result = await authService.login(
-            normalizedEmail,
-            password
-        );
-
-        return res.status(200).json({
-            message: "Inicio de sesión exitoso",
-            ...result,
-        });
-        } catch (error) {
-        if (
-            error instanceof Error &&
-            error.message === "INVALID_CREDENTIALS"
-        ) {
-            return res.status(401).json({
-            error: {
-                code: "INVALID_CREDENTIALS",
-                message: "Correo o contraseña incorrectos",
-                fields: {},
-            },
-            });
-        }
-
-        console.error("Error en login:", error);
-
-        return res.status(500).json({
-            error: {
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Ocurrió un error interno del servidor",
+      if (
+        typeof email !== "string" ||
+        typeof password !== "string"
+      ) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_INPUT",
+            message: "Correo y contraseña son obligatorios",
             fields: {},
-            },
+          },
         });
-        }
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_EMAIL",
+            message: "El correo electrónico no es válido",
+            fields: {
+              email: "Ingresa un correo electrónico válido",
+            },
+          },
+        });
+      }
+
+      if (!password) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_PASSWORD",
+            message: "La contraseña es obligatoria",
+            fields: {
+              password: "Ingresa tu contraseña",
+            },
+          },
+        });
+      }
+
+      const result = await authService.login(normalizedEmail, password);
+
+      return res.status(200).json({
+        message: "Inicio de sesión exitoso",
+        ...result,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "INVALID_CREDENTIALS"
+      ) {
+        return res.status(401).json({
+          error: {
+            code: "INVALID_CREDENTIALS",
+            message: "Correo o contraseña incorrectos",
+            fields: {},
+          },
+        });
+      }
+
+      next(error);
+      return;
+    }
   }
 }

@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import prisma from "../config/db";
-import { generarToken } from "../utils/jwt";  
+import { generarToken } from "../utils/jwt";
 
 interface RegisterInput {
   nombre: string;
@@ -9,6 +9,19 @@ interface RegisterInput {
 }
 
 export class AuthService {
+  async getPublicUser(id: number) {
+    return prisma.usuarios.findUnique({
+      where: { id_usuario: id },
+      select: {
+        id_usuario: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        fecha_registro: true,
+      },
+    });
+  }
+
   async register({ nombre, email, password }: RegisterInput) {
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -41,9 +54,18 @@ export class AuthService {
       },
     });
 
-    return user;
+    const token = generarToken({
+      sub: String(user.id_usuario),
+      rol: user.rol,
+    });
+
+    return {
+      token,
+      user,
+    };
   }
-    async login(email: string, password: string) {
+
+  async login(email: string, password: string) {
     const normalizedEmail = email.trim().toLowerCase();
 
     const user = await prisma.usuarios.findUnique({

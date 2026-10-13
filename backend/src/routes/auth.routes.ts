@@ -20,19 +20,33 @@ const authLimiter = rateLimit({
   },
 });
 
-router.post("/register", authLimiter, (req, res) =>
-  authController.register(req, res)
+router.post("/register", authLimiter, (req, res, next) =>
+  authController.register(req, res, next)
 );
 
-router.post("/login", authLimiter, (req, res) =>
-  authController.login(req, res)
+router.post("/login", authLimiter, (req, res, next) =>
+  authController.login(req, res, next)
 );
 
-router.get("/me", autenticarUsuario, (req, res) => {
-  return res.status(200).json({
-    message: "Usuario autenticado",
-    user: req.usuario,
-  });
+router.get("/me", autenticarUsuario, async (req, res, next) => {
+  try {
+    const userId = Number(req.usuario!.sub);
+    const user = await authController.getPublicUser(userId);
+
+    if (!user) {
+      return res.status(401).json({
+        error: {
+          code: "INVALID_TOKEN",
+          message: "El token no corresponde a un usuario activo",
+          fields: {},
+        },
+      });
+    }
+
+    return res.status(200).json({ message: "Usuario autenticado", user });
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;

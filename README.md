@@ -83,3 +83,15 @@ Prisma no usa la API key de Supabase. La clave `service_role` no va al repositor
 - `docs/proyecto_ecobite/ecobite_mvp_blueprint.md`: problema, alcance y flujo del MVP.
 - `docs/proyecto_ecobite/modelo_datos_ecobite.md`: entidades y relaciones.
 - `product_y_growth/data/week1-kpis-and-data-matrix.md`: qué se mide y qué campos pide el análisis.
+
+## Autenticación del backend
+
+La API expone `POST /api/auth/register` (201), `POST /api/auth/login` (200) y `GET /api/auth/me` (200). Registro/login devuelven `{ message, token, user }`; `user` contiene solo campos públicos. Los errores usan `{ error: { code, message, fields } }`. `/me` requiere `Authorization: Bearer <token>` y consulta los datos actuales del usuario.
+
+Configura en el entorno del backend:
+
+- `JWT_SECRET`: secreto aleatorio de al menos 32 bytes. No lo guardes en el repositorio ni lo registres.
+- `JWT_EXPIRES_IN`: duración aceptada por `jsonwebtoken` (por ejemplo, `15m` o `1h`); es obligatoria.
+- `CORS_ORIGIN`: origen web exacto permitido, incluyendo esquema y puerto cuando corresponda (por ejemplo, `http://localhost:5173`). No uses `*`.
+
+Registro y login comparten un límite de 10 solicitudes por IP cada 15 minutos. El almacén predeterminado es local al proceso; en despliegues con varias instancias debe configurarse un almacén compartido y validarse la IP cliente con la topología de proxy real antes de ajustar `trust proxy`.

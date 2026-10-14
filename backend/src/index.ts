@@ -44,6 +44,10 @@ app.get("/api/health", (req, res) => {
 
 app.use(errorMiddleware);
 
-app.listen(PORT, () => {
-  console.log(`Servidor EcoBite corriendo en puerto ${PORT}`);
-});
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor EcoBite corriendo en puerto ${PORT}`);
+  });
+}
+export default app;

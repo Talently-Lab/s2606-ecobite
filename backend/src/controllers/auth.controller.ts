@@ -3,6 +3,8 @@ import { AuthService } from "../services/auth.service";
 
 const authService = new AuthService();
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export class AuthController {
   getPublicUser(id: number) {
     return authService.getPublicUser(id);
@@ -30,7 +32,10 @@ export class AuthController {
         });
       }
 
-      if (!nombre.trim()) {
+      const normalizedName = nombre.trim();
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!normalizedName) {
         return res.status(400).json({
           error: {
             code: "INVALID_NAME",
@@ -41,9 +46,6 @@ export class AuthController {
           },
         });
       }
-
-      const normalizedEmail = email.trim().toLowerCase();
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!emailRegex.test(normalizedEmail)) {
         return res.status(400).json({
@@ -69,8 +71,20 @@ export class AuthController {
         });
       }
 
+      if (Buffer.byteLength(password, "utf8") > 72) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_PASSWORD",
+            message: "La contraseña no puede superar los 72 bytes en UTF-8",
+            fields: {
+              password: "Máximo 72 bytes en UTF-8",
+            },
+          },
+        });
+      }
+
       const result = await authService.register({
-        nombre,
+        nombre: normalizedName,
         email: normalizedEmail,
         password,
       });
@@ -81,8 +95,12 @@ export class AuthController {
       });
     } catch (error) {
       if (
-        (error instanceof Error && error.message === "EMAIL_ALREADY_EXISTS") ||
-        (typeof error === "object" && error !== null && "code" in error && error.code === "P2002")
+        (error instanceof Error &&
+          error.message === "EMAIL_ALREADY_EXISTS") ||
+        (typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "P2002")
       ) {
         return res.status(409).json({
           error: {
@@ -122,7 +140,6 @@ export class AuthController {
       }
 
       const normalizedEmail = email.trim().toLowerCase();
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!emailRegex.test(normalizedEmail)) {
         return res.status(400).json({
@@ -143,6 +160,18 @@ export class AuthController {
             message: "La contraseña es obligatoria",
             fields: {
               password: "Ingresa tu contraseña",
+            },
+          },
+        });
+      }
+
+      if (Buffer.byteLength(password, "utf8") > 72) {
+        return res.status(400).json({
+          error: {
+            code: "INVALID_PASSWORD",
+            message: "La contraseña no puede superar los 72 bytes en UTF-8",
+            fields: {
+              password: "Máximo 72 bytes en UTF-8",
             },
           },
         });

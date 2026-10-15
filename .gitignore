@@ -1,3 +1,5 @@
 node_modules/
 .env
 dist/
+# AWS SAM build artifacts
+.aws-sam/

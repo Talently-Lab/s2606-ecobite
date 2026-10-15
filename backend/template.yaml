@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: EcoBite API - AWS Lambda y API Gateway
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 15
+    MemorySize: 512
+    Environment:
+      Variables:
+        NODE_ENV: production
+        JWT_EXPIRES_IN: !Ref JwtExpiresIn
+        CORS_ORIGIN: !Ref CorsOrigin
+        DATABASE_URL: !Ref DatabaseUrl
+        DIRECT_URL: !Ref DirectUrl
+        JWT_SECRET: !Ref JwtSecret
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: URL de conexión de Prisma mediante el pooler de Supabase
+
+  DirectUrl:
+    Type: String
+    NoEcho: true
+    Description: URL directa configurada para Prisma
+
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: Secreto utilizado para firmar los JWT
+
+  JwtExpiresIn:
+    Type: String
+    Default: 7d
+    Description: Duración de los tokens JWT
+
+  CorsOrigin:
+    Type: String
+    Description: Origen autorizado para CORS
+
+Resources:
+  EcoBiteApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+
+  EcoBiteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: dist/lambda.handler
+      Events:
+        ApiRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EcoBiteApi
+            Path: /
+            Method: ANY
+        ApiProxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EcoBiteApi
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: URL base de la API de EcoBite
+    Value: !Sub https://${EcoBiteApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod/

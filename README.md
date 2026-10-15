@@ -9,7 +9,7 @@ El alcance de estas 8 semanas es una web responsive para validar el flujo, no la
 Tres piezas, todavía en ramas separadas:
 
 - **Web.** React, Vite, React Router y Tailwind. El estado global previsto es Context API. Vive en `frontend/` y habla con la API desde `frontend/src/services/`.
-- **API.** Node.js y Express, con carpetas de rutas, controladores y servicios. Vive en `backend/`. La base se consulta con Prisma.
+- **API.** Node.js y Express, con carpetas de rutas, controladores y servicios. Vive en `backend/`. La base se consulta con Prisma. El despliegue en Lambda y API Gateway está en [`docs/api/backend-lambda-deploy.md`](docs/api/backend-lambda-deploy.md).
 - **Datos.** Postgres en Supabase. El modelo sale del diagrama del equipo y suma los campos que hacen falta para el impacto (zona, distancia, estado del pedido, tipo de envase y si el restaurante está activo).
 
 El pedido simulado recorre catálogo, carrito y checkout sin pasarela de pago. La distancia no se mide en vivo: es el promedio de la zona del restaurante. El CO₂ del KPI se guarda cuando el pedido queda completado y la entrega es en bici. Si el pedido está pendiente o cancelado, la fila se conserva y el CO₂ de ese pedido no suma.
@@ -80,6 +80,7 @@ Prisma no usa la API key de Supabase. La clave `service_role` no va al repositor
 
 ## Documentación relacionada
 
+- [`docs/api/backend-lambda-deploy.md`](docs/api/backend-lambda-deploy.md): despliegue de la API en Lambda y API Gateway.
 - `docs/proyecto_ecobite/ecobite_mvp_blueprint.md`: problema, alcance y flujo del MVP.
 - `docs/proyecto_ecobite/modelo_datos_ecobite.md`: entidades y relaciones.
 - `product_y_growth/data/week1-kpis-and-data-matrix.md`: qué se mide y qué campos pide el análisis.

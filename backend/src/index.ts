@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import "dotenv/config";
 import authRoutes from "./routes/auth.routes";
+import homeRoutes from "./routes/home.routes";
 import { errorMiddleware } from "./middlewares/error.middleware";
 
 const app = express();
@@ -28,6 +29,7 @@ app.use(
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/home", homeRoutes);
 
 app.get("/", (req, res) => {
   res.json({

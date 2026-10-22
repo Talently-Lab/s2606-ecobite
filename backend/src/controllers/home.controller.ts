@@ -10,7 +10,8 @@ export class HomeController {
     next: NextFunction
 ): Promise<void> {
     try {
-      const data = await homeService.getHomeData();
+      const userId = req.usuario ? Number(req.usuario.sub) : undefined;
+      const data = await homeService.getHomeData(userId);
 
       res.status(200).json({
         message: "Datos obtenidos correctamente",

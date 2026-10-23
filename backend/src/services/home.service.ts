@@ -60,37 +60,57 @@ export class HomeService {
             },
           }),
     ]);
-
-    const nombresVistos = new Set<string>();
-    const restaurantesVistos = new Set<number>();
+  const nombresVistos = new Set<string>();
 
     const platillosUnicos = platillos.filter((platillo) => {
-      if (nombresVistos.has(platillo.nombre)) {
+      const nombreNormalizado = platillo.nombre.trim().toLowerCase();
+
+      if (nombresVistos.has(nombreNormalizado)) {
         return false;
       }
 
-      nombresVistos.add(platillo.nombre);
+      nombresVistos.add(nombreNormalizado);
       return true;
     });
 
-    const platillosDestacados = [
-      ...platillosUnicos.filter((platillo) => {
-        const restauranteId = platillo.restaurantes.id_restaurante;
+    const restaurantesVistos = new Set<number>();
+    const platillosDestacados: typeof platillosUnicos = [];
 
-        if (restaurantesVistos.has(restauranteId)) {
-          return false;
+    // Primera pasada: priorizar un plato por restaurante.
+    for (const platillo of platillosUnicos) {
+      if (platillosDestacados.length >= 6) {
+        break;
+      }
+
+      const restauranteId = platillo.restaurantes.id_restaurante;
+
+      if (restaurantesVistos.has(restauranteId)) {
+        continue;
+      }
+
+      restaurantesVistos.add(restauranteId);
+      platillosDestacados.push(platillo);
+    }
+
+    // Segunda pasada: completar hasta seis platos únicos.
+    if (platillosDestacados.length < 6) {
+      const idsPlatillosSeleccionados = new Set(
+        platillosDestacados.map((platillo) => platillo.id_platillo)
+      );
+
+      for (const platillo of platillosUnicos) {
+        if (platillosDestacados.length >= 6) {
+          break;
         }
 
-        restaurantesVistos.add(restauranteId);
-        return true;
-      }),
-      ...platillosUnicos.filter(
-        (platillo) =>
-          restaurantesVistos.has(platillo.restaurantes.id_restaurante) ===
-          false
-      ),
-    ].slice(0, 6);
+        if (idsPlatillosSeleccionados.has(platillo.id_platillo)) {
+          continue;
+        }
 
+        idsPlatillosSeleccionados.add(platillo.id_platillo);
+        platillosDestacados.push(platillo);
+      }
+    }
 
     const co2SavedKg =
       metricas.length === 0

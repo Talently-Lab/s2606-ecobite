@@ -22,6 +22,7 @@ export interface FeaturedDishDto {
   name: string;
   price: number;
   co2SavedPerUnit: number;
+  category: string | null;
   restaurant: {
     id: number;
     name: string;

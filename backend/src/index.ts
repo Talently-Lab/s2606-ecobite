@@ -4,6 +4,7 @@ import helmet from "helmet";
 import "dotenv/config";
 import authRoutes from "./routes/auth.routes";
 import homeRoutes from "./routes/home.routes";
+import catalogRoutes from "./routes/catalog.routes";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import { errorMiddleware } from "./middlewares/error.middleware";
@@ -33,6 +34,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
+app.use("/api/restaurantes", catalogRoutes);
 
 app.get("/", (req, res) => {
   res.json({

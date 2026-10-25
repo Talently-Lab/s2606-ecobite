@@ -247,7 +247,7 @@ const options: swaggerJsdoc.Options = {
           tags: ["Home"],
           summary: "Obtener los datos de Home",
           description:
-            "Devuelve restaurantes activos, platos destacados e impacto. El impacto es null cuando no se proporciona un usuario autenticado.",
+            "Devuelve restaurantes activos, platos destacados, impacto personal e impacto comunitario. El impacto personal es null cuando no se proporciona un usuario autenticado; el comunitario siempre se devuelve.",
           security: [{ bearerAuth: [] }],
           responses: {
             "200": {
@@ -271,6 +271,18 @@ const options: swaggerJsdoc.Options = {
                               co2SavedKg: { type: "number", example: 2.5 },
                             },
                           },
+                          communityImpact: {
+                            type: "object",
+                            properties: {
+                              co2SavedKg: {
+                                type: "number",
+                                example: 22.2,
+                                description:
+                                  "Kilogramos de CO₂ evitados en pedidos completados de toda la comunidad.",
+                              },
+                            },
+                            required: ["co2SavedKg"],
+                          },
                           categories: {
                             type: "array",
                             items: { type: "object" },
@@ -290,6 +302,7 @@ const options: swaggerJsdoc.Options = {
                         },
                         required: [
                           "userImpact",
+                          "communityImpact",
                           "categories",
                           "restaurants",
                           "featuredDishes",

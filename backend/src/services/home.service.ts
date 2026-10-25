@@ -29,7 +29,7 @@ function clasificarPlatillo(nombre: string): CategoryDto | null {
 
 export class HomeService {
   async getHomeData(userId?: number): Promise<HomeResponse> {
-    const [restaurantes, platillos, metricas] = await Promise.all([
+    const [restaurantes, platillos, metricas, impactoComunitario] = await Promise.all([
       prisma.restaurantes.findMany({
         where: { activo: true },
         select: {
@@ -73,6 +73,13 @@ export class HomeService {
             },
             select: { co2_evitado_kg: true },
           }),
+
+      prisma.metricas_impacto.aggregate({
+        where: {
+          pedidos: { estado_simulado: "completed" },
+        },
+        _sum: { co2_evitado_kg: true },
+      }),
     ]);
 
     const nombresVistos = new Set<string>();
@@ -144,12 +151,19 @@ export class HomeService {
           ? null
           : { co2SavedKg: Number(co2SavedKg.toFixed(2)) },
 
+      communityImpact: {
+        co2SavedKg: Number(
+          (impactoComunitario._sum.co2_evitado_kg?.toNumber() ?? 0).toFixed(2)
+        ),
+      },
+
       categories: Array.from(categoriasVistas.values()),
 
       restaurants: restaurantes.map((restaurante) => ({
         id: restaurante.id_restaurante,
         name: restaurante.nombre,
         address: restaurante.direccion,
+        imageUrl: null,
         biodegradablePackaging: restaurante.envase_biodegradable,
         ecoIndicator: restaurante.indicador_eco,
       })),
@@ -157,6 +171,7 @@ export class HomeService {
       featuredDishes: platillosDestacados.map((platillo) => ({
         id: platillo.id_platillo,
         name: platillo.nombre,
+        imageUrl: null,
         price: platillo.precio.toNumber(),
         co2SavedPerUnit: platillo.co2_ahorrado_unit.toNumber(),
         category:

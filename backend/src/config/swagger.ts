@@ -248,7 +248,7 @@ const options: swaggerJsdoc.Options = {
           summary: "Obtener los datos de Home",
           description:
             "Devuelve restaurantes activos, platos destacados, impacto personal e impacto comunitario. El impacto personal es null cuando no se proporciona un usuario autenticado; el comunitario siempre se devuelve.",
-          security: [{ bearerAuth: [] }],
+          security: [{ bearerAuth: [] }, {}],
           responses: {
             "200": {
               description: "Datos obtenidos correctamente",
@@ -261,55 +261,148 @@ const options: swaggerJsdoc.Options = {
                         type: "string",
                         example: "Datos obtenidos correctamente",
                       },
-                      data: {
-                        type: "object",
-                        properties: {
-                          userImpact: {
-                            nullable: true,
-                            type: "object",
-                            properties: {
-                              co2SavedKg: { type: "number", example: 2.5 },
+                        data: {
+                          type: "object",
+                          properties: {
+                            userImpact: {
+                              type: "object",
+                              nullable: true,
+                              properties: {
+                                co2SavedKg: {
+                                  type: "number",
+                                  example: 2.5,
+                                },
+                              },
+                              required: ["co2SavedKg"],
                             },
-                          },
-                          communityImpact: {
-                            type: "object",
-                            properties: {
-                              co2SavedKg: {
-                                type: "number",
-                                example: 22.2,
-                                description:
-                                  "Kilogramos de CO₂ evitados en pedidos completados de toda la comunidad.",
+                            communityImpact: {
+                              type: "object",
+                              properties: {
+                                co2SavedKg: {
+                                  type: "number",
+                                  example: 22.2,
+                                  description:
+                                    "Kilogramos de CO₂ evitados en pedidos completados de toda la comunidad.",
+                                },
+                              },
+                              required: ["co2SavedKg"],
+                            },
+                            categories: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  id: { type: "integer", example: 1 },
+                                  name: { type: "string", example: "Bowls" },
+                                  slug: { type: "string", example: "bowls" },
+                                },
+                                required: ["id", "name", "slug"],
                               },
                             },
-                            required: ["co2SavedKg"],
+                            restaurants: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  id: { type: "integer", example: 1 },
+                                  name: { type: "string", example: "Verde Bowl" },
+                                  address: { type: "string", example: "Thames 1420, Palermo" },
+                                  imageUrl: {
+                                    type: "string",
+                                    nullable: true,
+                                    example: null,
+                                  },
+                                  biodegradablePackaging: {
+                                    type: "boolean",
+                                    example: true,
+                                  },
+                                  ecoIndicator: { type: "string", example: "A" },
+                                },
+                                required: [
+                                  "id",
+                                  "name",
+                                  "address",
+                                  "imageUrl",
+                                  "biodegradablePackaging",
+                                  "ecoIndicator",
+                                ],
+                              },
+                            },
+                            featuredDishes: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  id: { type: "integer", example: 16 },
+                                  name: { type: "string", example: "Bowl quinoa" },
+                                  imageUrl: {
+                                    type: "string",
+                                    nullable: true,
+                                    example: null,
+                                  },
+                                  price: { type: "number", example: 4500 },
+                                  co2SavedPerUnit: { type: "number", example: 0.05 },
+                                  category: {
+                                    type: "string",
+                                    nullable: true,
+                                    example: "Bowls",
+                                  },
+                                  restaurant: {
+                                    type: "object",
+                                    properties: {
+                                      id: { type: "integer", example: 1 },
+                                      name: { type: "string", example: "Verde Bowl" },
+                                      ecoIndicator: { type: "string", example: "A" },
+                                      biodegradablePackaging: {
+                                        type: "boolean",
+                                        example: true,
+                                      },
+                                    },
+                                    required: [
+                                      "id",
+                                      "name",
+                                      "ecoIndicator",
+                                      "biodegradablePackaging",
+                                    ],
+                                  },
+                                },
+                                required: [
+                                  "id",
+                                  "name",
+                                  "imageUrl",
+                                  "price",
+                                  "co2SavedPerUnit",
+                                  "category",
+                                  "restaurant",
+                                ],
+                              },
+                            },
+                            howItWorks: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  step: { type: "integer", example: 1 },
+                                  title: { type: "string", example: "Elige tu comida" },
+                                  description: {
+                                    type: "string",
+                                    example: "Descubre restaurantes y platillos disponibles en EcoBite.",
+                                  },
+                                },
+                                required: ["step", "title", "description"],
+                              },
+                            },
                           },
-                          categories: {
-                            type: "array",
-                            items: { type: "object" },
-                          },
-                          restaurants: {
-                            type: "array",
-                            items: { type: "object" },
-                          },
-                          featuredDishes: {
-                            type: "array",
-                            items: { type: "object" },
-                          },
-                          howItWorks: {
-                            type: "array",
-                            items: { type: "object" },
-                          },
+                          required: [
+                            "userImpact",
+                            "communityImpact",
+                            "categories",
+                            "restaurants",
+                            "featuredDishes",
+                            "howItWorks",
+                          ],
                         },
-                        required: [
-                          "userImpact",
-                          "communityImpact",
-                          "categories",
-                          "restaurants",
-                          "featuredDishes",
-                          "howItWorks",
-                        ],
                       },
-                    },
                     required: ["message", "data"],
                   },
                 },

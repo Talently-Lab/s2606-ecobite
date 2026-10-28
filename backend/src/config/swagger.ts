@@ -28,6 +28,10 @@ const options: swaggerJsdoc.Options = {
         name: "Catálogo y Perfil",
         description: "Catálogo de restaurantes y menú disponible",
       },
+      {
+        name: "Pedido confirmado e impacto",
+        description: "Confirmación de pedidos y métricas de impacto persistidas",
+      },
     ],
     components: {
       securitySchemes: {
@@ -181,6 +185,90 @@ const options: swaggerJsdoc.Options = {
           properties: {
             message: { type: "string", example: "Menú obtenido correctamente" },
             data: { $ref: "#/components/schemas/RestaurantMenu" },
+          },
+          required: ["message", "data"],
+        },
+        OrderConfirmationItem: {
+          type: "object",
+          properties: {
+            dishId: { type: "integer", example: 16 },
+            name: { type: "string", example: "Bowl quinoa" },
+            quantity: { type: "integer", example: 2 },
+            unitPrice: { type: "number", example: 4500 },
+            subtotal: { type: "number", example: 9000 },
+            co2SavedKg: {
+              type: "number",
+              example: 0.1,
+              description: "Valor persistido en el detalle del pedido; no se recalcula.",
+            },
+            packagingType: { type: "string", example: "biodegradable" },
+          },
+          required: [
+            "dishId", "name", "quantity", "unitPrice",
+            "subtotal", "co2SavedKg", "packagingType",
+          ],
+        },
+        OrderConfirmation: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 42 },
+            date: { type: "string", format: "date-time" },
+            status: { type: "string", example: "completed" },
+            total: { type: "number", example: 9000 },
+            zone: { type: "string", example: "Palermo" },
+            restaurant: {
+              type: "object",
+              properties: {
+                id: { type: "integer", example: 1 },
+                name: { type: "string", example: "Verde Bowl" },
+              },
+              required: ["id", "name"],
+            },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/OrderConfirmationItem" },
+            },
+            environmentalImpact: {
+              type: "object",
+              nullable: true,
+              description: "Métrica ambiental persistida del pedido; null si no existe.",
+              properties: {
+                co2SavedKg: { type: "number", example: 0.1 },
+              },
+              required: ["co2SavedKg"],
+            },
+          },
+          required: [
+            "id", "date", "status", "total", "zone",
+            "restaurant", "items", "environmentalImpact",
+          ],
+        },
+        OrderConfirmationResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Confirmación del pedido obtenida correctamente",
+            },
+            data: {
+              type: "object",
+              properties: {
+                order: { $ref: "#/components/schemas/OrderConfirmation" },
+                myImpact: {
+                  type: "object",
+                  properties: {
+                    co2SavedKg: { type: "number", example: 2.03 },
+                    ordersCount: {
+                      type: "integer",
+                      example: 6,
+                      description: "Cantidad de métricas de impacto registradas para el usuario.",
+                    },
+                  },
+                  required: ["co2SavedKg", "ordersCount"],
+                },
+              },
+              required: ["order", "myImpact"],
+            },
           },
           required: ["message", "data"],
         },
@@ -390,6 +478,59 @@ const options: swaggerJsdoc.Options = {
             },
             "404": {
               description: "Restaurante no encontrado o inactivo",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/pedidos/{id}/confirmacion": {
+        get: {
+          tags: ["Pedido confirmado e impacto"],
+          summary: "Consultar la confirmación de un pedido",
+          description:
+            "Devuelve un pedido perteneciente al usuario autenticado, sus detalles y las métricas ambientales persistidas. No crea pedidos ni recalcula el impacto.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+              description: "Identificador entero positivo del pedido.",
+              example: 42,
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Confirmación obtenida correctamente",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderConfirmationResponse" },
+                },
+              },
+            },
+            "400": {
+              description: "Identificador de pedido inválido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente o usuario autenticado no válido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Pedido inexistente o no perteneciente al usuario autenticado",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },

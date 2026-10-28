@@ -28,6 +28,10 @@ const options: swaggerJsdoc.Options = {
         name: "Catálogo y Perfil",
         description: "Catálogo de restaurantes y menú disponible",
       },
+      {
+        name: "Checkout",
+        description: "Validación del carrito y cotización preliminar del pedido",
+      },
     ],
     components: {
       securitySchemes: {
@@ -568,6 +572,163 @@ const options: swaggerJsdoc.Options = {
             "401": {
               description:
                 "Token inválido cuando se envía autenticación opcional",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+
+      "/api/checkout/cotizar": {
+        post: {
+          tags: ["Checkout"],
+          summary: "Cotizar el carrito",
+          description:
+            "Valida el restaurante, la disponibilidad de los productos y las cantidades. Calcula los subtotales usando los precios actuales del catálogo. No crea un pedido. El costo de entrega, el total final y el impacto ambiental quedan pendientes de reglas de negocio aprobadas.",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["restaurantId", "zone", "items"],
+                  properties: {
+                    restaurantId: {
+                      type: "integer",
+                      minimum: 1,
+                      example: 1,
+                    },
+                    zone: {
+                      type: "string",
+                      minLength: 1,
+                      maxLength: 50,
+                      example: "Palermo",
+                    },
+                    items: {
+                      type: "array",
+                      description:
+                        "Entre 1 y 20 productos distintos. Cada dishId debe aparecer una sola vez.",
+                      minItems: 1,
+                      maxItems: 20,
+                      items: {
+                        type: "object",
+                        required: ["dishId", "quantity"],
+                        properties: {
+                          dishId: {
+                            type: "integer",
+                            minimum: 1,
+                            example: 1,
+                          },
+                          quantity: {
+                            type: "integer",
+                            minimum: 1,
+                            maximum: 20,
+                            description: "Máximo técnico provisional: 20 unidades por producto.",
+                            example: 2,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                example: {
+                  restaurantId: 1,
+                  zone: "Palermo",
+                  items: [{ dishId: 1, quantity: 2 }],
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Cotización preliminar calculada",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["message", "data"],
+                    properties: {
+                      message: { type: "string" },
+                      data: {
+                        type: "object",
+                        properties: {
+                          restaurantId: { type: "integer" },
+                          restaurantName: { type: "string" },
+                          zone: { type: "string" },
+                          items: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                dishId: { type: "integer" },
+                                name: { type: "string" },
+                                quantity: { type: "integer" },
+                                unitPrice: { type: "number" },
+                                subtotal: { type: "number" },
+                              },
+                            },
+                          },
+                          subtotal: { type: "number" },
+                          deliveryFee: {
+                            type: "number",
+                            nullable: true,
+                            example: null,
+                          },
+                          total: {
+                            type: "number",
+                            nullable: true,
+                            example: null,
+                          },
+                          environmentalImpact: {
+                            type: "object",
+                            nullable: true,
+                            description:
+                              "Actualmente null. El cálculo ambiental queda pendiente de reglas de negocio aprobadas.",
+                            additionalProperties: true,
+                            example: null,
+                          },
+                          requiresEnvironmentalRules: {
+                            type: "boolean",
+                            example: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Carrito inválido o productos no disponibles",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Falta el token o no es válido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Restaurante no encontrado o inactivo",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "500": {
+              description:
+                "Error interno al validar el catálogo o calcular los subtotales",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },

@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes";
 import homeRoutes from "./routes/home.routes";
 import catalogRoutes from "./routes/catalog.routes";
 import swaggerUi from "swagger-ui-express";
+import { getCurrentInvoke } from "@codegenie/serverless-express";
 import { swaggerSpec } from "./config/swagger";
 import { errorMiddleware } from "./middlewares/error.middleware";
 
@@ -30,7 +31,21 @@ app.use(
 );
 
 app.use(express.json());
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+const swaggerHtml = swaggerUi.generateHTML(swaggerSpec);
+
+app.get(["/api-docs", "/api-docs/"], (_req, res) => {
+  const stage = getCurrentInvoke().event?.requestContext?.stage;
+  const baseHref =
+    typeof stage === "string" && stage.length > 0
+      ? `/${stage}/api-docs/`
+      : "/api-docs/";
+
+  res
+    .type("html")
+    .send(swaggerHtml.replace("<head>", `<head><base href="${baseHref}">`));
+});
+app.use("/api-docs", swaggerUi.serveWithOptions({ redirect: false }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);

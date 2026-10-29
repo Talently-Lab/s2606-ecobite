@@ -15,9 +15,9 @@ const ORDERS = [
   { id: 6, date: '02 sep 2026', local: 'Verde Bowl', zone: 'Palermo', total: 11300, co2: 300 },
 ]
 
-const formatPrice = (n) => `$ ${n.toLocaleString('es-AR')}`
+const formatPrice = (n: number) => `$ ${n.toLocaleString('es-AR')}`
 
-const periodButtonStyle = (active) => ({
+const periodButtonStyle = (active: boolean) => ({
   border: '0',
   cursor: 'pointer',
   font: '500 14px "Inter", sans-serif',
@@ -31,7 +31,7 @@ const periodButtonStyle = (active) => ({
 export function ImpactoPage() {
   const [periodId, setPeriodId] = useState('total')
 
-  const period = PERIODS.find((p) => p.id === periodId)
+  const period = PERIODS.find((p) => p.id === periodId)!
 
   const periods = PERIODS.map((p) => ({
     label: p.label,

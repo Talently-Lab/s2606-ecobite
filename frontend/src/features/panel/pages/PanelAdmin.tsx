@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 // Datos de ejemplo: reemplazar por los reales
 const ORDERS = [
   { id: '#1048', date: '20 oct 2026', client: 'Lucía Pérez', local: 'Verde Bowl', zone: 'Palermo', total: 15150, co2: 325, status: 'Entregado' },
@@ -15,7 +17,7 @@ const STATUS_COLORS = {
   Cancelado: { background: '#F9E9E6', color: '#B3412E' },
 }
 
-const statusStyle = (status) => ({
+const statusStyle = (status: string): CSSProperties => ({
   display: 'inline-flex',
   alignItems: 'center',
   fontWeight: '500',
@@ -23,10 +25,10 @@ const statusStyle = (status) => ({
   padding: '4px 10px',
   borderRadius: '999px',
   whiteSpace: 'nowrap',
-  ...STATUS_COLORS[status],
+  ...STATUS_COLORS[status as keyof typeof STATUS_COLORS],
 })
 
-const formatPrice = (n) => `$ ${n.toLocaleString('es-AR')}`
+const formatPrice = (n: number) => `$ ${n.toLocaleString('es-AR')}`
 
 export function PanelAdmin() {
   const userName = 'Admin EcoBite'

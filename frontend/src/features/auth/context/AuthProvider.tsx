@@ -13,7 +13,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authService
       .me()
       .then(({ usuario }) => setUsuario(usuario))
-      .catch(() => setToken(null))
+      .catch(() => {
+        setToken(null)
+        setUsuario(null)
+      })
       .finally(() => setLoading(false))
   }, [])
 

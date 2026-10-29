@@ -1,10 +1,7 @@
 import { readItem, writeItem } from '@/shared/lib/storage'
 
-const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/$/, '')
 const TOKEN_KEY = 'ecobite.token'
-
-/** Sin VITE_API_URL los servicios usan sus mocks locales. */
-export const hasApi = API_URL !== ''
 
 export type FieldErrors = Record<string, string>
 
@@ -33,6 +30,11 @@ interface RequestOptions {
 interface ErrorBody {
   message?: string
   errors?: FieldErrors
+  error?: {
+    code?: string
+    message?: string
+    fields?: FieldErrors
+  }
 }
 
 export async function request<T>(path: string, { method = 'GET', body }: RequestOptions = {}): Promise<T> {
@@ -53,8 +55,12 @@ export async function request<T>(path: string, { method = 'GET', body }: Request
 
   const data: unknown = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const { message, errors } = data as ErrorBody
-    throw new ApiError(res.status, message ?? 'Algo salió mal. Intentá de nuevo.', errors)
+    const { error, message, errors } = (data ?? {}) as ErrorBody
+    const fallback =
+      res.status === 429
+        ? 'Demasiados intentos. Inténtalo nuevamente más tarde.'
+        : 'Algo salió mal. Intentá de nuevo.'
+    throw new ApiError(res.status, error?.message ?? message ?? fallback, error?.fields ?? errors)
   }
   return data as T
 }

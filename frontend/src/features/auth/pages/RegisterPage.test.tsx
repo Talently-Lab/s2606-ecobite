@@ -1,5 +1,5 @@
-import { screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ROUTES } from '@/shared/config/routes'
 import { renderAuthRoute } from '@/test/renderWithProviders'
 import { AUTH_MESSAGES as MSG } from '../messages'
@@ -14,11 +14,37 @@ async function fillForm(user: ReturnType<typeof renderAuthRoute>['user'], email 
   await user.click(screen.getByRole('button', { name: 'Crear cuenta' }))
 }
 
+const fetchMock = vi.fn<typeof fetch>()
+const apiUser = {
+  id_usuario: 1,
+  nombre: 'Lucía Pérez',
+  email: 'lucia@mail.com',
+  rol: 'cliente',
+  fecha_registro: '2026-10-25T15:32:42.838Z',
+}
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', fetchMock)
+  fetchMock.mockReset()
+  fetchMock.mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        message: 'Usuario registrado correctamente',
+        token: 'jwt-registro',
+        user: apiUser,
+      }),
+      { status: 201 },
+    ),
+  )
+})
+afterEach(() => vi.unstubAllGlobals())
+
 describe('RegisterPage', () => {
   it('muestra los errores de cada campo al enviar vacío', async () => {
     const { user } = renderAuthRoute(ROUTES.register, <RegisterPage />)
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }))
 
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(screen.getByRole('alert')).toHaveTextContent(MSG.registerInvalid)
     expect(screen.getByText(MSG.nameRequired)).toBeInTheDocument()
     expect(screen.getByText(MSG.emailRequired)).toBeInTheDocument()
@@ -30,21 +56,102 @@ describe('RegisterPage', () => {
     const { user } = renderAuthRoute(ROUTES.register, <RegisterPage />)
     await fillForm(user)
     expect(await screen.findByText('Inicio: Lucía Pérez')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/auth/register',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ nombre: 'Lucía Pérez', email: 'lucia@mail.com', password: 'verde2026Bici' }),
+      }),
+    )
+    expect(localStorage.getItem('ecobite.token')).toBe('jwt-registro')
+    expect(localStorage.getItem('ecobite.mock.usuarios')).toBeNull()
+  })
+
+  it('recupera la sesión registrada al volver a abrir la página', async () => {
+    localStorage.setItem('ecobite.token', 'jwt-registro')
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: 'Usuario autenticado',
+          user: apiUser,
+        }),
+        { status: 200 },
+      ),
+    )
+    renderAuthRoute(ROUTES.register, <RegisterPage />)
+    expect(await screen.findByText('Inicio: Lucía Pérez')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/auth/me',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer jwt-registro' }) }),
+    )
   })
 
   it('avisa si el correo ya está registrado', async () => {
-    localStorage.setItem(
-      'ecobite.mock.usuarios',
-      JSON.stringify([
-        { id_usuario: 1, nombre: 'L', email: 'lucia@mail.com', password: 'x', rol: 'cliente' },
-      ]),
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 'EMAIL_ALREADY_EXISTS',
+            message: 'El correo electrónico ya está registrado',
+            fields: { email: 'Este correo ya está en uso' },
+          },
+        }),
+        { status: 409 },
+      ),
     )
     const { user } = renderAuthRoute(ROUTES.register, <RegisterPage />)
     await fillForm(user, 'LUCIA@mail.com')
 
-    const message = await screen.findByText(MSG.emailTaken, { exact: false })
-    expect(screen.getByLabelText('Correo electrónico')).toHaveAccessibleDescription(/Ya existe una cuenta/)
-    expect(within(message).getByRole('link', { name: 'Ingresá' })).toHaveAttribute('href', ROUTES.login)
+    expect(await screen.findByText('Este correo ya está en uso')).toBeInTheDocument()
+    expect(screen.getByLabelText('Correo electrónico')).toHaveAccessibleDescription(
+      'Este correo ya está en uso',
+    )
+    expect(localStorage.getItem('ecobite.token')).toBeNull()
+  })
+
+  it('muestra la validación enviada por la API', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 'INVALID_INPUT',
+            message: 'Los campos obligatorios no son válidos',
+            fields: { nombre: 'El nombre no es válido' },
+          },
+        }),
+        { status: 400 },
+      ),
+    )
+    const { user } = renderAuthRoute(ROUTES.register, <RegisterPage />)
+    await fillForm(user)
+    expect(await screen.findByText('El nombre no es válido')).toBeInTheDocument()
+    expect(localStorage.getItem('ecobite.token')).toBeNull()
+  })
+
+  it('muestra el límite de intentos sin iniciar sesión', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Demasiados intentos. Inténtalo nuevamente más tarde.',
+            fields: {},
+          },
+        }),
+        { status: 429 },
+      ),
+    )
+    const { user } = renderAuthRoute(ROUTES.register, <RegisterPage />)
+    await fillForm(user)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Demasiados intentos')
+    expect(localStorage.getItem('ecobite.token')).toBeNull()
+  })
+
+  it('avisa cuando no puede conectarse al servidor', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    const { user } = renderAuthRoute(ROUTES.register, <RegisterPage />)
+    await fillForm(user)
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos conectarnos')
   })
 
   it('permite mostrar la contraseña', async () => {

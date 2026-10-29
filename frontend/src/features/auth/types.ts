@@ -1,14 +1,3 @@
-/*
- * Contrato de auth propuesto (pendiente de acordar con backend y pasar a docs/api).
- * Base: VITE_API_URL
- *
- *   POST /auth/register  RegisterPayload  -> 201 AuthResponse
- *                                            409 { message, errors: { email } }
- *   POST /auth/login     LoginPayload     -> 200 AuthResponse
- *                                            401 { message }
- *   GET  /auth/me        (Bearer token)   -> 200 { usuario: Usuario }
- */
-
 /** Espeja el enum rol_usuario del schema de Prisma. */
 export type Rol = 'cliente' | 'dueno' | 'admin'
 
@@ -31,9 +20,22 @@ export interface RegisterPayload {
   password: string
 }
 
+/** Respuesta de POST /api/auth/register y POST /api/auth/login. */
+export interface AuthApiResponse {
+  message: string
+  token: string
+  user: Usuario & { fecha_registro: string }
+}
+
 export interface AuthResponse {
   token: string
   usuario: Usuario
+}
+
+/** Respuesta de GET /api/auth/me. */
+export interface MeApiResponse {
+  message: string
+  user: Usuario & { fecha_registro: string }
 }
 
 export interface MeResponse {

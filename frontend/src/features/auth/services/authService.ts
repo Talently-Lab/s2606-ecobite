@@ -1,15 +1,32 @@
-import { hasApi, request } from '@/shared/lib/http'
-import type { AuthResponse, LoginPayload, MeResponse, RegisterPayload } from '../types'
-import { authMock } from './authMock'
+import { request } from '@/shared/lib/http'
+import type {
+  AuthResponse,
+  LoginPayload,
+  MeResponse,
+  RegisterPayload,
+  AuthApiResponse,
+  MeApiResponse,
+} from '../types'
 
-const authApi = {
-  login: (payload: LoginPayload) => request<AuthResponse>('/auth/login', { method: 'POST', body: payload }),
-  register: (payload: RegisterPayload) =>
-    request<AuthResponse>('/auth/register', { method: 'POST', body: payload }),
-  me: () => request<MeResponse>('/auth/me'),
-  // Con JWT sin estado no hace falta avisar al servidor: alcanza con borrar el token.
+export const authService = {
+  login: async (payload: LoginPayload): Promise<AuthResponse> => {
+    const { token, user } = await request<AuthApiResponse>('/auth/login', {
+      method: 'POST',
+      body: payload,
+    })
+    return { token, usuario: user }
+  },
+  register: async (payload: RegisterPayload): Promise<AuthResponse> => {
+    const { token, user } = await request<AuthApiResponse>('/auth/register', {
+      method: 'POST',
+      body: payload,
+    })
+    return { token, usuario: user }
+  },
+  me: async (): Promise<MeResponse> => {
+    const { user } = await request<MeApiResponse>('/auth/me')
+    return { usuario: user }
+  },
+  // Con JWT sin estado alcanza con borrar el token.
   logout: () => {},
 }
-
-/** Usa la API real si hay VITE_API_URL; si no, el mock local. */
-export const authService = hasApi ? authApi : authMock

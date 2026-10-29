@@ -3,7 +3,6 @@ export const ROUTES = {
   home: '/',
   login: '/login',
   register: '/registro',
-  panelUser: '/panel',
   restaurants: '/restaurantes',
   restaurantMenu: '/restaurantes/:id',
   checkout: '/checkout',

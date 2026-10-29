@@ -1,10 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { GuestRoute, LoginPage, RegisterPage } from '@/features/auth'
+import { GuestRoute, LoginPage, ProtectedRoute, RegisterPage } from '@/features/auth'
 import { MethodologyPage, JoinPage, ContactPage } from '@/features/information'
 import { HomePage } from '@/features/home'
-import { ROUTES } from '@/shared/config/routes'
-import { PanelUser } from '@/features/panel'  
+import { RestaurantCatalogPage, RestaurantMenuPage } from '@/features/catalog'
 import { CheckoutPage } from '@/features/panel'
+import { ROUTES } from '@/shared/config/routes'
 
 export function AppRoutes() {
   return (
@@ -13,20 +13,17 @@ export function AppRoutes() {
       <Route path={ROUTES.methodology} element={<MethodologyPage />} />
       <Route path={ROUTES.join} element={<JoinPage />} />
       <Route path={ROUTES.contact} element={<ContactPage />} />
-
+      <Route path={ROUTES.restaurants} element={<RestaurantCatalogPage />} />
+      <Route path="/panel" element={<Navigate to={ROUTES.restaurants} replace />} />
       <Route element={<GuestRoute />}>
         <Route path={ROUTES.login} element={<LoginPage />} />
         <Route path={ROUTES.register} element={<RegisterPage />} />
       </Route>
-
-      {/* Pantallas que requieren sesión, por ejemplo:
       <Route element={<ProtectedRoute />}>
-        <Route path={ROUTES.impact} element={<ImpactPage />} />
-      </Route> */}
-  
+        <Route path={ROUTES.restaurantMenu} element={<RestaurantMenuPage />} />
+        <Route path={ROUTES.checkout} element={<CheckoutPage />} />
+      </Route>
       <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
-      <Route path={ROUTES.panelUser} element={<PanelUser />} />
-      <Route path={ROUTES.checkout} element={<CheckoutPage />} />
     </Routes>
   )
 }

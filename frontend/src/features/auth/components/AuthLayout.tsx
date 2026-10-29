@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from '@/shared/components/Logo'
+import { returnTo } from '../routes/returnTo'
 import { ROUTES } from '@/shared/config/routes'
 
 interface AuthLayoutProps {
@@ -17,6 +18,7 @@ const tabClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export function AuthLayout({ intro, extra, children }: AuthLayoutProps) {
+  const from = returnTo(useLocation().state)
   return (
     <div className="flex min-h-screen flex-wrap bg-crema">
       <aside className="relative flex min-h-80 min-w-0 flex-[1_1_420px] flex-col justify-between gap-10 overflow-hidden bg-bosque p-8 text-white sm:p-12">
@@ -45,10 +47,10 @@ export function AuthLayout({ intro, extra, children }: AuthLayoutProps) {
       <main className="flex min-w-0 flex-[1_1_480px] items-center justify-center px-6 py-12">
         <div className="flex w-full max-w-110 flex-col gap-6">
           <nav aria-label="Acceso" className="flex gap-1 rounded-full bg-arena p-1">
-            <NavLink to={ROUTES.login} className={tabClass}>
+            <NavLink state={{ from }} to={ROUTES.login} className={tabClass}>
               Ingresar
             </NavLink>
-            <NavLink to={ROUTES.register} className={tabClass}>
+            <NavLink state={{ from }} to={ROUTES.register} className={tabClass}>
               Crear cuenta
             </NavLink>
           </nav>

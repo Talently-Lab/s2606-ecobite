@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Alert, Button, PasswordField, TextField } from '@/shared/components/ui'
 import { ROUTES } from '@/shared/config/routes'
 import { useForm } from '@/shared/hooks/useForm'
@@ -10,16 +10,19 @@ import { useAuth } from '../hooks/useAuth'
 import { AUTH_MESSAGES, STRENGTH_HINTS } from '../messages'
 import { passwordStrength, validateRegister, type RegisterValues } from '../validation'
 
+import { returnTo } from '../routes/returnTo'
+
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const from = returnTo(useLocation().state)
 
   const { values, errors, formError, submitting, field, handleSubmit } = useForm<RegisterValues>({
     initialValues: { nombre: '', email: '', password: '', password2: '', terms: false },
     validate: validateRegister,
     onSubmit: async ({ nombre, email, password }) => {
       await register({ nombre: nombre.trim(), email: email.trim(), password })
-      navigate(ROUTES.home, { replace: true })
+      navigate(from, { replace: true })
     },
     invalidMessage: AUTH_MESSAGES.registerInvalid,
   })
@@ -44,7 +47,7 @@ export function RegisterPage() {
           autoComplete="email"
           value={values.email}
           {...field('email')}
-          error={errors.email === AUTH_MESSAGES.emailTaken ? <EmailTakenMessage /> : errors.email}
+          error={errors.email === AUTH_MESSAGES.emailTaken ? <EmailTakenMessage from={from} /> : errors.email}
         />
         <PasswordField
           label="Contraseña"
@@ -88,7 +91,7 @@ export function RegisterPage() {
 
       <p className="text-center text-sm text-musgo">
         ¿Ya tenés cuenta?{' '}
-        <Link to={ROUTES.login} className="px-0.5 py-2 font-semibold">
+        <Link to={ROUTES.login} state={{ from }} className="px-0.5 py-2 font-semibold">
           Ingresá
         </Link>
       </p>
@@ -96,11 +99,11 @@ export function RegisterPage() {
   )
 }
 
-function EmailTakenMessage() {
+function EmailTakenMessage({ from }: { from: string }) {
   return (
     <>
       {AUTH_MESSAGES.emailTaken}{' '}
-      <Link to={ROUTES.login} className="font-semibold">
+      <Link to={ROUTES.login} state={{ from }} className="font-semibold">
         Ingresá
       </Link>{' '}
       o usá otro.

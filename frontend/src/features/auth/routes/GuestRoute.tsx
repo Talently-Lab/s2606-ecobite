@@ -1,10 +1,12 @@
-import { Navigate, Outlet } from 'react-router-dom'
-import { ROUTES } from '@/shared/config/routes'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { SessionLoading } from '@/shared/components/SessionLoading'
+import { returnTo } from './returnTo'
 import { useAuth } from '../hooks/useAuth'
 
-/** Solo para visitantes: con sesión iniciada redirige al inicio. */
+/** Solo para visitantes: con sesión iniciada recupera el destino solicitado. */
 export function GuestRoute() {
   const { usuario, loading } = useAuth()
-  if (loading) return null
-  return usuario ? <Navigate to={ROUTES.home} replace /> : <Outlet />
+  const destination = returnTo(useLocation().state)
+  if (loading) return <SessionLoading />
+  return usuario ? <Navigate to={destination} replace /> : <Outlet />
 }

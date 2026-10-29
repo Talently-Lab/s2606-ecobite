@@ -8,14 +8,12 @@ import { useAuth } from '../hooks/useAuth'
 import { AUTH_MESSAGES } from '../messages'
 import { validateLogin, type LoginValues } from '../validation'
 
-interface LocationState {
-  from?: string
-}
+import { returnTo } from '../routes/returnTo'
 
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const from = (useLocation().state as LocationState | null)?.from ?? ROUTES.home
+  const from = returnTo(useLocation().state)
 
   const { values, formError, submitting, field, handleSubmit } = useForm<LoginValues>({
     initialValues: { email: '', password: '' },
@@ -54,7 +52,7 @@ export function LoginPage() {
 
       <p className="text-center text-sm text-musgo">
         ¿No tenés cuenta?{' '}
-        <Link to={ROUTES.register} className="px-0.5 py-2 font-semibold">
+        <Link to={ROUTES.register} state={{ from }} className="px-0.5 py-2 font-semibold">
           Creá una gratis
         </Link>
       </p>

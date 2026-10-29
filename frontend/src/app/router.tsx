@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { GuestRoute, LoginPage, RegisterPage } from '@/features/auth'
+import { MethodologyPage, JoinPage, ContactPage } from '@/features/information'
 import { HomePage } from '@/features/home'
 import { ROUTES } from '@/shared/config/routes'
 import { PanelUser } from '@/features/panel'  
@@ -9,6 +10,9 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path={ROUTES.home} element={<HomePage />} />
+      <Route path={ROUTES.methodology} element={<MethodologyPage />} />
+      <Route path={ROUTES.join} element={<JoinPage />} />
+      <Route path={ROUTES.contact} element={<ContactPage />} />
 
       <Route element={<GuestRoute />}>
         <Route path={ROUTES.login} element={<LoginPage />} />

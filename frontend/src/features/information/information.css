@@ -1,0 +1,44 @@
+@reference '../../shared/styles/index.css';
+
+@layer components {
+  .info-container {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+  .info-card {
+    @apply rounded-3xl border border-borde bg-white p-7 sm:p-8;
+  }
+  .info-icon {
+    @apply inline-flex size-12 items-center justify-center rounded-2xl bg-niebla text-bosque;
+  }
+  .info-text-link {
+    @apply inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline decoration-bosque/30 underline-offset-8;
+  }
+  .info-button {
+    @apply inline-flex min-h-13 items-center justify-center gap-3 rounded-full px-6 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bosque;
+  }
+  .info-page a,
+  .info-page button,
+  .info-page summary {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bosque;
+  }
+  .info-faq {
+    @apply border-b border-borde py-5;
+  }
+  .info-faq summary {
+    @apply flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-medium;
+  }
+  .info-faq summary::-webkit-details-marker {
+    display: none;
+  }
+  .info-faq[open] summary svg {
+    transform: rotate(45deg);
+  }
+  .info-faq p {
+    @apply max-w-2xl pt-3 pb-2 text-sm leading-7 text-musgo;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .info-faq summary svg {
+    transition: transform 180ms ease;
+  }
+}

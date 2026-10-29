@@ -1,8 +1,15 @@
-/** Rutas de la app. Usar siempre estas constantes en lugar de strings sueltos. */
+/** Rutas centralizadas de la aplicación. */
 export const ROUTES = {
   home: '/',
   login: '/login',
   register: '/registro',
   panelUser: '/panel',
+  restaurants: '/restaurantes',
+  restaurantMenu: '/restaurantes/:id',
   checkout: '/checkout',
+  methodology: '/como-calculamos-co2',
+  join: '/suma-tu-local',
+  contact: '/contacto',
 } as const
+
+export const restaurantMenuUrl = (id: number) => `${ROUTES.restaurants}/${id}`

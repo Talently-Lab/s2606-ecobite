@@ -29,7 +29,7 @@ function clasificarPlatillo(nombre: string): CategoryDto | null {
 
 export class HomeService {
   async getHomeData(userId?: number): Promise<HomeResponse> {
-    const [restaurantes, platillos, metricas] = await Promise.all([
+    const [restaurantes, platillos, metricas, impactoComunitario] = await Promise.all([
       prisma.restaurantes.findMany({
         where: { activo: true },
         select: {
@@ -73,61 +73,78 @@ export class HomeService {
             },
             select: { co2_evitado_kg: true },
           }),
+
+      prisma.metricas_impacto.aggregate({
+        where: {
+          pedidos: { estado_simulado: "completed" },
+        },
+        _sum: { co2_evitado_kg: true },
+      }),
     ]);
 
-    const nombresVistos = new Set<string>();
+    const restaurantesVistos = new Set<number>();
+    const idsSeleccionados = new Set<number>();
+    const categoriasDestacadas = new Set<number>();
+    const platillosDestacados: typeof platillos = [];
 
-    const platillosUnicos = platillos.filter((platillo) => {
-      const nombreNormalizado = platillo.nombre.trim().toLowerCase();
+    function seleccionarPlatillo(
+      platillo: (typeof platillos)[number],
+      exigirRestauranteNuevo: boolean,
+      exigirCategoriaNueva: boolean
+    ): boolean {
+      const idPlatillo = platillo.id_platillo;
+      const idRestaurante = platillo.restaurantes.id_restaurante;
+      const categoria = clasificarPlatillo(platillo.nombre);
 
-      if (nombresVistos.has(nombreNormalizado)) {
-        return false;
+    if (idsSeleccionados.has(idPlatillo)) return false;
+    if (exigirRestauranteNuevo && restaurantesVistos.has(idRestaurante)) {
+      return false;
+      }
+    if (
+      exigirCategoriaNueva &&
+      (!categoria || categoriasDestacadas.has(categoria.id))
+    ) {
+      return false;
+    }
+
+    idsSeleccionados.add(idPlatillo);
+    restaurantesVistos.add(idRestaurante);
+    if (categoria) categoriasDestacadas.add(categoria.id);
+    platillosDestacados.push(platillo);
+
+      return true;
+    }
+
+    // Primera pasada: categorías distintas y restaurantes distintos.
+    for (const platillo of platillos) {
+      if (platillosDestacados.length >= 6) break;
+      seleccionarPlatillo(platillo, true, true);
       }
 
-      nombresVistos.add(nombreNormalizado);
-      return true;
-    });
-
-    const restaurantesVistos = new Set<number>();
-    const platillosDestacados: typeof platillosUnicos = [];
-
-    for (const platillo of platillosUnicos) {
+    // Segunda pasada: categorías nuevas, aunque se repita restaurante.
+    for (const platillo of platillos) {
       if (platillosDestacados.length >= 6) break;
+      seleccionarPlatillo(platillo, false, true);
+      }
 
-      const restauranteId = platillo.restaurantes.id_restaurante;
+    // Tercera pasada: completar con otras ofertas reales.
+    for (const platillo of platillos) {
+      if (platillosDestacados.length >= 6) break;
+      seleccionarPlatillo(platillo, false, false);
+      }
 
-      if (restaurantesVistos.has(restauranteId)) continue;
+    const categoriasPorPlatillo = new Map(
+        platillos.map((platillo) => [
+          platillo.id_platillo,
+          clasificarPlatillo(platillo.nombre),
+        ])
+      );
 
-      restaurantesVistos.add(restauranteId);
-      platillosDestacados.push(platillo);
+    const categoriasVistas = new Map<number, CategoryDto>();
+
+    for (const categoria of categoriasPorPlatillo.values()) {
+      if (categoria) categoriasVistas.set(categoria.id, categoria);
     }
-
-      if (platillosDestacados.length < 6) {
-        const idsSeleccionados = new Set(
-          platillosDestacados.map((platillo) => platillo.id_platillo)
-        );
-
-        for (const platillo of platillosUnicos) {
-          if (platillosDestacados.length >= 6) break;
-          if (idsSeleccionados.has(platillo.id_platillo)) continue;
-
-          idsSeleccionados.add(platillo.id_platillo);
-          platillosDestacados.push(platillo);
-        }
-    }
-
-          const categoriasPorPlatillo = new Map(
-              platillos.map((platillo) => [
-                platillo.id_platillo,
-                clasificarPlatillo(platillo.nombre),
-              ])
-            );
-
-          const categoriasVistas = new Map<number, CategoryDto>();
-
-          for (const categoria of categoriasPorPlatillo.values()) {
-            if (categoria) categoriasVistas.set(categoria.id, categoria);
-          }
 
     const co2SavedKg =
       metricas.length === 0
@@ -144,12 +161,19 @@ export class HomeService {
           ? null
           : { co2SavedKg: Number(co2SavedKg.toFixed(2)) },
 
+      communityImpact: {
+        co2SavedKg: Number(
+          (impactoComunitario._sum.co2_evitado_kg?.toNumber() ?? 0).toFixed(2)
+        ),
+      },
+
       categories: Array.from(categoriasVistas.values()),
 
       restaurants: restaurantes.map((restaurante) => ({
         id: restaurante.id_restaurante,
         name: restaurante.nombre,
         address: restaurante.direccion,
+        imageUrl: null,
         biodegradablePackaging: restaurante.envase_biodegradable,
         ecoIndicator: restaurante.indicador_eco,
       })),
@@ -157,6 +181,7 @@ export class HomeService {
       featuredDishes: platillosDestacados.map((platillo) => ({
         id: platillo.id_platillo,
         name: platillo.nombre,
+        imageUrl: null,
         price: platillo.precio.toNumber(),
         co2SavedPerUnit: platillo.co2_ahorrado_unit.toNumber(),
         category:

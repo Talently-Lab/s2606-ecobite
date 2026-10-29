@@ -55,7 +55,9 @@ const mapearRestaurante = (
     address: restaurante.direccion,
     biodegradablePackaging: restaurante.envase_biodegradable,
     ecoIndicator: restaurante.indicador_eco,
-    imageUrl: null,
+    imageUrl: process.env.IMAGES_BASE_URL
+      ? `${process.env.IMAGES_BASE_URL.replace(/\/+$/, "")}/restaurants/${restaurante.id_restaurante}.jpg`
+      : null,
     category: categorias.length === 1 ? categorias[0] : null,
     estimatedDeliveryMinutes: null,
     rating: null,
@@ -87,7 +89,9 @@ const mapearPlatillo = (
     co2SavedPerUnit: platillo.co2_ahorrado_unit.toNumber(),
     category: categoria?.name ?? null,
     restaurantId: platillo.id_restaurante,
-    imageUrl: null,
+    imageUrl: process.env.IMAGES_BASE_URL
+      ? `${process.env.IMAGES_BASE_URL.replace(/\/+$/, "")}/dishes/${platillo.id_platillo}.jpg`
+      : null,
     available: platillo.disponible,
     restaurant: {
       id: platillo.restaurantes.id_restaurante,

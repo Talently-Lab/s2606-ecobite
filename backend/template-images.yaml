@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  EcoBite image storage. Private S3 bucket for restaurant, dish, and banner
+  images, served through CloudFront with origin access control.
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: ecobite-images-265751834002
+    Description: Globally unique name for the EcoBite images bucket.
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+
+Resources:
+  ImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+      Tags:
+        - Key: Project
+          Value: EcoBite
+
+  ImagesOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-s3-oac"
+        Description: CloudFront access to the EcoBite images bucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  ImagesDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: EcoBite public images
+        PriceClass: PriceClass_100
+        HttpVersion: http2
+        Origins:
+          - Id: ecobite-images-s3
+            DomainName: !GetAtt ImagesBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt ImagesOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: ecobite-images-s3
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Project
+          Value: EcoBite
+
+  ImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ImagesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource:
+              - !Sub "arn:aws:s3:::${ImagesBucket}/restaurants/*"
+              - !Sub "arn:aws:s3:::${ImagesBucket}/dishes/*"
+              - !Sub "arn:aws:s3:::${ImagesBucket}/banners/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${ImagesDistribution}"
+
+Outputs:
+  BucketName:
+    Description: Private S3 bucket that stores EcoBite images.
+    Value: !Ref ImagesBucket
+
+  BucketRegion:
+    Description: Region of the images bucket.
+    Value: !Ref AWS::Region
+
+  DistributionId:
+    Description: CloudFront distribution that serves the images.
+    Value: !Ref ImagesDistribution
+
+  ImagesBaseUrl:
+    Description: Base URL the API must prepend to image keys. No trailing slash.
+    Value: !Sub "https://${ImagesDistribution.DomainName}"

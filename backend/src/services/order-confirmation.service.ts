@@ -3,6 +3,7 @@ import {
   MyImpactDto,
   OrderConfirmationDto,
 } from "../types/order-confirmation.types";
+import { ORDER_STATUS } from "../constants/order-status";
 
 interface OrderConfirmationResult {
   order: OrderConfirmationDto;
@@ -60,6 +61,7 @@ export class OrderConfirmationService {
     const metricasUsuario = await prisma.metricas_impacto.findMany({
       where: {
         id_usuario: userId,
+        pedidos: { estado_simulado: ORDER_STATUS.COMPLETED },
       },
       select: {
         co2_evitado_kg: true,

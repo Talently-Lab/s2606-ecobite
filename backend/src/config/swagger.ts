@@ -64,6 +64,30 @@ const options: swaggerJsdoc.Options = {
           },
           required: ["error"],
         },
+        OrderErrorResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Los datos del pedido no son válidos",
+            },
+            code: {
+              type: "string",
+              example: "INVALID_ITEMS",
+            },
+          },
+          required: ["message", "code"],
+        },
+        OrderMessageErrorResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Error interno al crear el pedido",
+            },
+          },
+          required: ["message"],
+        },
         User: {
           type: "object",
           properties: {
@@ -487,6 +511,131 @@ const options: swaggerJsdoc.Options = {
           },
         },
       },
+      "/api/pedidos": {
+        post: {
+          tags: ["Pedidos"],
+          summary: "Crear un pedido",
+          description:
+            "Crea un pedido para un restaurante activo. El usuario se identifica mediante el token JWT; los precios y la disponibilidad se validan en el backend.",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["restaurantId", "zone", "items"],
+                  properties: {
+                    restaurantId: {
+                      type: "integer",
+                      minimum: 1,
+                      example: 1,
+                    },
+                    zone: {
+                      type: "string",
+                      maxLength: 50,
+                      description: "Zona de demostración con distancia simulada provisional. Valores admitidos: cercana (2 km), media (5 km), lejana (8 km). Se aceptan mayúsculas y minúsculas.",
+                      enum: ["cercana", "media", "lejana"],
+                      example: "cercana",
+                    },
+                    items: {
+                      type: "array",
+                      minItems: 1,
+                      items: {
+                        type: "object",
+                        required: ["dishId", "quantity"],
+                        properties: {
+                          dishId: {
+                            type: "integer",
+                            minimum: 1,
+                            example: 12,
+                          },
+                          quantity: {
+                            type: "integer",
+                            minimum: 1,
+                            example: 2,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description:
+                "Pedido creado correctamente con su confirmación e impacto ambiental actualizado",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/OrderConfirmationResponse",
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Datos del pedido inválidos o cuerpo JSON inválido",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/OrderErrorResponse" },
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente o usuario autenticado no válido",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/OrderErrorResponse" },
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+            "404": {
+              description: "Restaurante inexistente o inactivo",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderErrorResponse" },
+                },
+              },
+            },
+            "422": {
+              description:
+                "Valor ambiental inválido o impacto ambiental total fuera del límite permitido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderErrorResponse" },
+                },
+              },
+            },
+            "500": {
+              description:
+                "Error interno durante la creación del pedido o la generación de su confirmación",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/OrderErrorResponse" },
+                      { $ref: "#/components/schemas/OrderMessageErrorResponse" },
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       "/api/pedidos/{id}/confirmacion": {
         get: {
           tags: ["Pedido confirmado e impacto"],
@@ -531,6 +680,14 @@ const options: swaggerJsdoc.Options = {
             },
             "404": {
               description: "Pedido inexistente o no perteneciente al usuario autenticado",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "500": {
+              description: "Error interno del servidor al consultar la confirmación del pedido",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },

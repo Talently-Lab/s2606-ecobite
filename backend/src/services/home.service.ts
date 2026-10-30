@@ -1,5 +1,7 @@
 import prisma from "../config/db";
 import { CategoryDto, HomeResponse } from "../types/home.types";
+import { ORDER_STATUS } from "../constants/order-status";
+
 
 const reglasCategorias: Array<{
   coincidencia: RegExp;
@@ -69,14 +71,14 @@ export class HomeService {
         : prisma.metricas_impacto.findMany({
             where: {
               id_usuario: userId,
-              pedidos: { estado_simulado: "completed" },
+              pedidos: { estado_simulado: ORDER_STATUS.COMPLETED },
             },
             select: { co2_evitado_kg: true },
           }),
 
       prisma.metricas_impacto.aggregate({
         where: {
-          pedidos: { estado_simulado: "completed" },
+          pedidos: { estado_simulado: ORDER_STATUS.COMPLETED },
         },
         _sum: { co2_evitado_kg: true },
       }),

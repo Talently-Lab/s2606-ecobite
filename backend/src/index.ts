@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes";
 import homeRoutes from "./routes/home.routes";
 import catalogRoutes from "./routes/catalog.routes";
 import orderConfirmationRoutes from "./routes/order-confirmation.routes";
+import orderRoutes from "./routes/order.routes";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import { errorMiddleware } from "./middlewares/error.middleware";
@@ -36,6 +37,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
 app.use("/api/restaurantes", catalogRoutes);
+app.use("/api/pedidos", orderRoutes);
 app.use("/api/pedidos", orderConfirmationRoutes);
 
 app.get("/", (req, res) => {

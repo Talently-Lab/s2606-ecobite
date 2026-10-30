@@ -15,6 +15,7 @@ Globals:
         DATABASE_URL: !Ref DatabaseUrl
         DIRECT_URL: !Ref DirectUrl
         JWT_SECRET: !Ref JwtSecret
+        IMAGES_BASE_URL: !Ref ImagesBaseUrl
 
 Parameters:
   DatabaseUrl:
@@ -41,6 +42,11 @@ Parameters:
   CorsOrigin:
     Type: String
     Description: Origen autorizado para CORS
+
+  ImagesBaseUrl:
+    Type: String
+    Default: https://dmcut9fuk1tgy.cloudfront.net
+    Description: URL base de CloudFront para las imagenes del catalogo, sin barra final
 
 Resources:
   EcoBiteApi:

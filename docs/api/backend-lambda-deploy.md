@@ -62,7 +62,8 @@ sam.cmd deploy \
     DirectUrl="$DIRECT_URL" \
     JwtSecret="$JWT_SECRET" \
     JwtExpiresIn="$JWT_EXPIRES_IN" \
-    CorsOrigin="$CORS_ORIGIN"
+    CorsOrigin="$CORS_ORIGIN" \
+    ImagesBaseUrl="$IMAGES_BASE_URL"
 ```
 
 `CAPABILITY_IAM` hace falta porque el template crea el rol de la función. El bucket de artefactos tiene que existir en `us-west-2`.
@@ -74,12 +75,15 @@ Variables que el deploy pide:
 - `JWT_SECRET`: al menos 32 bytes. Este primer despliegue usa un secreto nuevo. Los tokens firmados por otro proceso dejan de servir hasta que el usuario vuelve a entrar.
 - `JWT_EXPIRES_IN`: en este despliegue, `7d`.
 - `CORS_ORIGIN`: origen exacto del frontend. En este despliegue, `http://localhost:5173`.
+- `IMAGES_BASE_URL`: URL base de CloudFront, sin barra final. En este despliegue, `https://dmcut9fuk1tgy.cloudfront.net`. El catálogo arma `imageUrl` con esa base.
 
 ## Comprobación
 
 ```bash
 curl "https://dq31vqhgc3.execute-api.us-west-2.amazonaws.com/prod/"
 curl "https://dq31vqhgc3.execute-api.us-west-2.amazonaws.com/prod/api/health"
+curl "https://dq31vqhgc3.execute-api.us-west-2.amazonaws.com/prod/api/home"
+curl "https://dq31vqhgc3.execute-api.us-west-2.amazonaws.com/prod/api/restaurantes"
 ```
 
 Ambas respondieron HTTP 200 después del deploy del 15 de octubre de 2026.

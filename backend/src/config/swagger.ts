@@ -28,6 +28,10 @@ const options: swaggerJsdoc.Options = {
         name: "Catálogo y Perfil",
         description: "Catálogo de restaurantes y menú disponible",
       },
+      {
+        name: "Pedido confirmado e impacto",
+        description: "Confirmación de pedidos y métricas de impacto persistidas",
+      },
     ],
     components: {
       securitySchemes: {
@@ -59,6 +63,30 @@ const options: swaggerJsdoc.Options = {
             },
           },
           required: ["error"],
+        },
+        OrderErrorResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Los datos del pedido no son válidos",
+            },
+            code: {
+              type: "string",
+              example: "INVALID_ITEMS",
+            },
+          },
+          required: ["message", "code"],
+        },
+        OrderMessageErrorResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Error interno al crear el pedido",
+            },
+          },
+          required: ["message"],
         },
         User: {
           type: "object",
@@ -181,6 +209,90 @@ const options: swaggerJsdoc.Options = {
           properties: {
             message: { type: "string", example: "Menú obtenido correctamente" },
             data: { $ref: "#/components/schemas/RestaurantMenu" },
+          },
+          required: ["message", "data"],
+        },
+        OrderConfirmationItem: {
+          type: "object",
+          properties: {
+            dishId: { type: "integer", example: 16 },
+            name: { type: "string", example: "Bowl quinoa" },
+            quantity: { type: "integer", example: 2 },
+            unitPrice: { type: "number", example: 4500 },
+            subtotal: { type: "number", example: 9000 },
+            co2SavedKg: {
+              type: "number",
+              example: 0.1,
+              description: "Valor persistido en el detalle del pedido; no se recalcula.",
+            },
+            packagingType: { type: "string", example: "biodegradable" },
+          },
+          required: [
+            "dishId", "name", "quantity", "unitPrice",
+            "subtotal", "co2SavedKg", "packagingType",
+          ],
+        },
+        OrderConfirmation: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 42 },
+            date: { type: "string", format: "date-time" },
+            status: { type: "string", example: "completed" },
+            total: { type: "number", example: 9000 },
+            zone: { type: "string", example: "Palermo" },
+            restaurant: {
+              type: "object",
+              properties: {
+                id: { type: "integer", example: 1 },
+                name: { type: "string", example: "Verde Bowl" },
+              },
+              required: ["id", "name"],
+            },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/OrderConfirmationItem" },
+            },
+            environmentalImpact: {
+              type: "object",
+              nullable: true,
+              description: "Métrica ambiental persistida del pedido; null si no existe.",
+              properties: {
+                co2SavedKg: { type: "number", example: 0.1 },
+              },
+              required: ["co2SavedKg"],
+            },
+          },
+          required: [
+            "id", "date", "status", "total", "zone",
+            "restaurant", "items", "environmentalImpact",
+          ],
+        },
+        OrderConfirmationResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Confirmación del pedido obtenida correctamente",
+            },
+            data: {
+              type: "object",
+              properties: {
+                order: { $ref: "#/components/schemas/OrderConfirmation" },
+                myImpact: {
+                  type: "object",
+                  properties: {
+                    co2SavedKg: { type: "number", example: 2.03 },
+                    ordersCount: {
+                      type: "integer",
+                      example: 6,
+                      description: "Cantidad de métricas de impacto registradas para el usuario.",
+                    },
+                  },
+                  required: ["co2SavedKg", "ordersCount"],
+                },
+              },
+              required: ["order", "myImpact"],
+            },
           },
           required: ["message", "data"],
         },
@@ -390,6 +502,192 @@ const options: swaggerJsdoc.Options = {
             },
             "404": {
               description: "Restaurante no encontrado o inactivo",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/pedidos": {
+        post: {
+          tags: ["Pedidos"],
+          summary: "Crear un pedido",
+          description:
+            "Crea un pedido para un restaurante activo. El usuario se identifica mediante el token JWT; los precios y la disponibilidad se validan en el backend.",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["restaurantId", "zone", "items"],
+                  properties: {
+                    restaurantId: {
+                      type: "integer",
+                      minimum: 1,
+                      example: 1,
+                    },
+                    zone: {
+                      type: "string",
+                      maxLength: 50,
+                      description: "Zona de demostración con distancia simulada provisional. Valores admitidos: cercana (2 km), media (5 km), lejana (8 km). Se aceptan mayúsculas y minúsculas.",
+                      enum: ["cercana", "media", "lejana"],
+                      example: "cercana",
+                    },
+                    items: {
+                      type: "array",
+                      minItems: 1,
+                      items: {
+                        type: "object",
+                        required: ["dishId", "quantity"],
+                        properties: {
+                          dishId: {
+                            type: "integer",
+                            minimum: 1,
+                            example: 12,
+                          },
+                          quantity: {
+                            type: "integer",
+                            minimum: 1,
+                            example: 2,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description:
+                "Pedido creado correctamente con su confirmación e impacto ambiental actualizado",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/OrderConfirmationResponse",
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Datos del pedido inválidos o cuerpo JSON inválido",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/OrderErrorResponse" },
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente o usuario autenticado no válido",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/OrderErrorResponse" },
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+            "404": {
+              description: "Restaurante inexistente o inactivo",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderErrorResponse" },
+                },
+              },
+            },
+            "422": {
+              description:
+                "Valor ambiental inválido o impacto ambiental total fuera del límite permitido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderErrorResponse" },
+                },
+              },
+            },
+            "500": {
+              description:
+                "Error interno durante la creación del pedido o la generación de su confirmación",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/OrderErrorResponse" },
+                      { $ref: "#/components/schemas/OrderMessageErrorResponse" },
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/pedidos/{id}/confirmacion": {
+        get: {
+          tags: ["Pedido confirmado e impacto"],
+          summary: "Consultar la confirmación de un pedido",
+          description:
+            "Devuelve un pedido perteneciente al usuario autenticado, sus detalles y las métricas ambientales persistidas. No crea pedidos ni recalcula el impacto.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+              description: "Identificador entero positivo del pedido.",
+              example: 42,
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Confirmación obtenida correctamente",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OrderConfirmationResponse" },
+                },
+              },
+            },
+            "400": {
+              description: "Identificador de pedido inválido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente o usuario autenticado no válido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Pedido inexistente o no perteneciente al usuario autenticado",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "500": {
+              description: "Error interno del servidor al consultar la confirmación del pedido",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },

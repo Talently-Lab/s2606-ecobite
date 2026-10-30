@@ -80,7 +80,10 @@ Prisma no usa la API key de Supabase. La clave `service_role` no va al repositor
 
 ## Documentación relacionada
 
-- [`docs/api/backend-lambda-deploy.md`](docs/api/backend-lambda-deploy.md): despliegue de la API en Lambda y API Gateway.
+
+-- [`docs/api/backend-lambda-deploy.md`](docs/api/backend-lambda-deploy.md): despliegue de la API en Lambda y API Gateway.
+- [`docs/api/images-s3.md`](docs/api/images-s3.md): bucket de imágenes, CloudFront y el contrato de `imageUrl`.
+
 - `docs/proyecto_ecobite/ecobite_mvp_blueprint.md`: problema, alcance y flujo del MVP.
 - `docs/proyecto_ecobite/modelo_datos_ecobite.md`: entidades y relaciones.
 - `product_y_growth/data/week1-kpis-and-data-matrix.md`: qué se mide y qué campos pide el análisis.

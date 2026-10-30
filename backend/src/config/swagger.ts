@@ -32,6 +32,10 @@ const options: swaggerJsdoc.Options = {
         name: "Pedido confirmado e impacto",
         description: "Confirmación de pedidos y métricas de impacto persistidas",
       },
+      {
+        name: "Checkout",
+        description: "Validación del carrito y cálculo preliminar de cotización",
+      },
     ],
     components: {
       securitySchemes: {
@@ -296,6 +300,89 @@ const options: swaggerJsdoc.Options = {
           },
           required: ["message", "data"],
         },
+        CheckoutQuoteRequest: {
+          type: "object",
+          required: ["restaurantId", "zone", "items"],
+          properties: {
+            restaurantId: { type: "integer", minimum: 1, example: 1 },
+            zone: {
+              type: "string",
+              minLength: 1,
+              maxLength: 50,
+              example: "cercana",
+              description: "Zona indicada por el cliente. En esta cotización solo se valida que sea un texto de hasta 50 caracteres.",
+            },
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: 20,
+              items: {
+                type: "object",
+                required: ["dishId", "quantity"],
+                properties: {
+                  dishId: { type: "integer", minimum: 1, example: 16 },
+                  quantity: {
+                    type: "integer",
+                    minimum: 1,
+                    maximum: 20,
+                    example: 2,
+                  },
+                },
+              },
+              description: "Hasta 20 productos distintos; no se admiten identificadores de plato repetidos.",
+            },
+          },
+        },
+        CheckoutQuoteItem: {
+          type: "object",
+          properties: {
+            dishId: { type: "integer", example: 16 },
+            name: { type: "string", example: "Bowl quinoa" },
+            quantity: { type: "integer", example: 2 },
+            unitPrice: { type: "number", example: 4500 },
+            subtotal: { type: "number", example: 9000 },
+          },
+          required: ["dishId", "name", "quantity", "unitPrice", "subtotal"],
+        },
+        CheckoutQuoteResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Cotización calculada correctamente",
+            },
+            data: {
+              type: "object",
+              properties: {
+                restaurantId: { type: "integer", example: 1 },
+                restaurantName: { type: "string", example: "Verde Bowl" },
+                zone: { type: "string", example: "cercana" },
+                items: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/CheckoutQuoteItem" },
+                },
+                subtotal: { type: "number", example: 9000 },
+                deliveryFee: { type: "number", nullable: true, example: null },
+                total: { type: "number", nullable: true, example: null },
+                environmentalImpact: {
+                  type: "number",
+                  nullable: true,
+                  example: null,
+                },
+                requiresEnvironmentalRules: {
+                  type: "boolean",
+                  example: true,
+                },
+              },
+              required: [
+                "restaurantId", "restaurantName", "zone", "items", "subtotal",
+                "deliveryFee", "total", "environmentalImpact",
+                "requiresEnvironmentalRules",
+              ],
+            },
+          },
+          required: ["message", "data"],
+        },
         LoginRequest: {
           type: "object",
           properties: {
@@ -502,6 +589,65 @@ const options: swaggerJsdoc.Options = {
             },
             "404": {
               description: "Restaurante no encontrado o inactivo",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/checkout/cotizar": {
+        post: {
+          tags: ["Checkout"],
+          summary: "Calcular una cotización preliminar del carrito",
+          description:
+            "Valida el restaurante activo y los platos disponibles, y calcula los precios y subtotales usando los valores del catálogo. No crea pedidos ni calcula el costo de despacho, el total final o el impacto ambiental.",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CheckoutQuoteRequest" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Cotización calculada correctamente",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/CheckoutQuoteResponse" },
+                },
+              },
+            },
+            "400": {
+              description: "Datos del carrito, restaurante o productos inválidos",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente o inválido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Restaurante inexistente o no disponible",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "500": {
+              description: "Error interno o datos de precios inválidos en el catálogo",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },

@@ -86,6 +86,8 @@ model restaurantes {
   id_usuario_owner     Int         @unique
   nombre               String      @db.VarChar(120)
   direccion            String
+  latitud              Decimal?    @db.Decimal(9,6)
+  longitud             Decimal?    @db.Decimal(9,6)
   envase_biodegradable Boolean
   indicador_eco        String      @db.VarChar(50)
   activo               Boolean

@@ -36,6 +36,10 @@ const options: swaggerJsdoc.Options = {
         name: "Checkout",
         description: "Validación del carrito y cálculo preliminar de cotización",
       },
+      {
+        name: "Administración",
+        description: "Indicadores generales y últimos pedidos para administradores",
+      },
     ],
     components: {
       securitySchemes: {
@@ -1017,6 +1021,100 @@ const options: swaggerJsdoc.Options = {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },
                 },
               },
+            },
+          },
+        },
+      },
+      "/api/admin/dashboard": {
+        get: {
+          tags: ["Administración"],
+          summary: "Obtener el panel administrativo",
+          description:
+            "Devuelve indicadores generales y los últimos 10 pedidos. Requiere un usuario autenticado con rol admin.",
+          security: [{ bearerAuth: [] }],
+          responses: {
+            "200": {
+              description: "Panel administrativo obtenido correctamente",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      message: { type: "string" },
+                      data: {
+                        type: "object",
+                        properties: {
+                          summary: {
+                            type: "object",
+                            properties: {
+                              co2SavedKg: { type: "number", example: 12.5 },
+                              ordersCount: { type: "integer", example: 60 },
+                              activeRestaurantsCount: {
+                                type: "integer",
+                                example: 7,
+                              },
+                              averageTicket: { type: "number", example: 8500 },
+                            },
+                            required: [
+                              "co2SavedKg",
+                              "ordersCount",
+                              "activeRestaurantsCount",
+                              "averageTicket",
+                            ],
+                          },
+                          recentOrders: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                id: { type: "integer", example: 42 },
+                                date: {
+                                  type: "string",
+                                  format: "date-time",
+                                },
+                                customer: { type: "string", example: "Ana Pérez" },
+                                restaurant: {
+                                  type: "string",
+                                  example: "Verde Bowl",
+                                },
+                                zone: { type: "string", example: "cercana" },
+                                total: { type: "number", example: 9000 },
+                                co2SavedKg: {
+                                  type: "number",
+                                  nullable: true,
+                                  example: 0.1,
+                                },
+                                status: {
+                                  type: "string",
+                                  example: "completed",
+                                },
+                              },
+                              required: [
+                                "id",
+                                "date",
+                                "customer",
+                                "restaurant",
+                                "zone",
+                                "total",
+                                "co2SavedKg",
+                                "status",
+                              ],
+                            },
+                          },
+                        },
+                        required: ["summary", "recentOrders"],
+                      },
+                    },
+                    required: ["message", "data"],
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente o inválido",
+            },
+            "403": {
+              description: "El usuario autenticado no tiene rol admin",
             },
           },
         },

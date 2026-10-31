@@ -8,6 +8,7 @@ import catalogRoutes from "./routes/catalog.routes";
 import orderConfirmationRoutes from "./routes/order-confirmation.routes";
 import orderRoutes from "./routes/order.routes";
 import checkoutRoutes from "./routes/checkout.routes";
+import adminRoutes from "./routes/admin.routes";
 import swaggerUi from "swagger-ui-express";
 import { getCurrentInvoke } from "@codegenie/serverless-express";
 import { swaggerSpec } from "./config/swagger";
@@ -35,6 +36,10 @@ app.use(
 
 app.use(express.json());
 
+app.get("/api-docs.json", (_req, res) => {
+  res.json(swaggerSpec);
+});
+
 const swaggerHtml = swaggerUi.generateHTML(swaggerSpec);
 
 app.get(["/api-docs", "/api-docs/"], (_req, res) => {
@@ -55,6 +60,7 @@ app.use("/api/home", homeRoutes);
 app.use("/api/restaurantes", catalogRoutes);
 app.use("/api/pedidos", orderRoutes);
 app.use("/api/checkout", checkoutRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/pedidos", orderConfirmationRoutes);
 
 app.get("/", (req, res) => {

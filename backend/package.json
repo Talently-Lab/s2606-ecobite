@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx src/index.ts",
     "prisma:migrate": "prisma migrate dev",
-    "build": "prisma generate && tsc"
+    "build": "prisma generate && tsc",
+    "admin:init": "tsx src/scripts/initialize-admin.ts"
   },
   "keywords": [],
   "author": "",

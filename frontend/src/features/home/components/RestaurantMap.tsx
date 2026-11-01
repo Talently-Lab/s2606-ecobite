@@ -1,4 +1,5 @@
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
+import { Bike, Clock3, Leaf, MapPinned, Navigation, Route, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { restaurantMenuUrl } from '@/shared/config/routes'
 import type { Restaurant } from '../types'
@@ -72,77 +73,167 @@ export function RestaurantMap({ restaurants }: RestaurantMapProps) {
 
   return (
     <div
-      className="relative z-0 h-[420px] w-full overflow-hidden rounded-3xl border border-borde shadow-[0_16px_48px_rgb(30_43_34/0.14)]"
+      className="relative z-0 w-full overflow-hidden rounded-3xl border border-borde bg-white shadow-[0_16px_48px_rgb(30_43_34/0.14)]"
       aria-label="Mapa de restaurantes"
     >
-      <MapContainer
-        center={center}
-        zoom={13}
-        bounds={bounds.length ? bounds : undefined}
-        scrollWheelZoom={false}
-        className="h-full w-full"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {route && (
-          <>
-            <Polyline positions={route.coordinates} pathOptions={{ color: '#D4772C', weight: 5 }} />
-            <RouteViewport route={route} />
-          </>
+      <div className="flex items-start justify-between gap-4 border-b border-borde px-5 py-4 sm:px-6">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-bosque">
+            <MapPinned size={18} aria-hidden="true" />
+            Restaurantes cerca tuyo
+          </div>
+          <p className="m-0 mt-1 text-sm text-musgo">
+            {mappedRestaurants.length
+              ? `${mappedRestaurants.length} locales ubicados en el mapa`
+              : 'No hay ubicaciones disponibles por ahora'}
+          </p>
+        </div>
+        <span className="hidden rounded-full bg-arena px-3 py-1 text-xs font-semibold text-musgo sm:inline-flex">
+          OpenStreetMap
+        </span>
+      </div>
+
+      <div className="relative h-[360px] sm:h-[390px]">
+        <MapContainer
+          center={center}
+          zoom={13}
+          bounds={bounds.length ? bounds : undefined}
+          scrollWheelZoom={false}
+          className="h-full w-full"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {route && (
+            <>
+              <Polyline positions={route.coordinates} pathOptions={{ color: '#D4772C', weight: 5 }} />
+              <RouteViewport route={route} />
+            </>
+          )}
+          {mappedRestaurants.map((restaurant) => (
+            <CircleMarker
+              key={restaurant.id}
+              center={[restaurant.latitude, restaurant.longitude]}
+              radius={9}
+              pathOptions={{ color: '#24402A', fillColor: '#436844', fillOpacity: 1 }}
+            >
+              <Popup>
+                <div className="min-w-[190px]">
+                  <p className="m-0 text-base font-semibold text-[#24402A]">{restaurant.name}</p>
+                  <p className="m-0 mt-1 text-sm text-[#5A6B5E]">{restaurant.address}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      className="inline-flex min-h-9 items-center rounded-full bg-[#436844] px-3 text-sm font-semibold text-white no-underline"
+                      href={restaurantMenuUrl(restaurant.id)}
+                    >
+                      Ver menú
+                    </a>
+                    <button
+                      className="inline-flex min-h-9 items-center gap-1 rounded-full border border-[#436844] bg-white px-3 text-sm font-semibold text-[#436844]"
+                      type="button"
+                      onClick={() => void handleDirections(restaurant)}
+                    >
+                      <Navigation size={14} aria-hidden="true" />
+                      Cómo llegar
+                    </button>
+                  </div>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
+        </MapContainer>
+
+        {mappedRestaurants.length > 0 && !route && (
+          <div className="pointer-events-none absolute bottom-4 left-4 z-[400] rounded-xl bg-white/95 px-3 py-2 text-xs text-musgo shadow">
+            <span className="mr-2 inline-block size-2 rounded-full bg-bosque align-middle" />
+            Locales disponibles
+          </div>
         )}
-        {mappedRestaurants.map((restaurant) => (
-          <CircleMarker
-            key={restaurant.id}
-            center={[restaurant.latitude, restaurant.longitude]}
-            radius={9}
-            pathOptions={{ color: '#24402A', fillColor: '#436844', fillOpacity: 1 }}
-          >
-            <Popup>
-              <strong>{restaurant.name}</strong>
-              <br />
-              {restaurant.address}
-              <br />
-              <a href={restaurantMenuUrl(restaurant.id)}>Ver menú</a>
-              <br />
-              <button type="button" onClick={() => void handleDirections(restaurant)}>
-                Cómo llegar
-              </button>
-            </Popup>
-          </CircleMarker>
-        ))}
-      </MapContainer>
-      {mappedRestaurants.length === 0 && (
-        <p className="pointer-events-none absolute inset-x-4 bottom-4 rounded-xl bg-white/95 p-3 text-center text-sm text-musgo shadow">
-          Todavía no hay restaurantes con ubicación disponible.
-        </p>
-      )}
-      {selectedRestaurant && (
-        <div className="absolute left-4 top-4 z-[1000] max-w-[280px] rounded-xl bg-white/95 p-3 text-sm text-musgo shadow">
-          <strong>Ruta a {selectedRestaurant.name}</strong>
-          {loadingRoute && <p className="m-0 mt-1">Calculando ruta…</p>}
-          {routeError && (
-            <div className="mt-1">
-              <p className="m-0">{routeError}</p>
+        {mappedRestaurants.length === 0 && (
+          <p className="pointer-events-none absolute inset-x-4 bottom-4 z-[400] rounded-xl bg-white/95 p-3 text-center text-sm text-musgo shadow">
+            Todavía no hay restaurantes con ubicación disponible.
+          </p>
+        )}
+        {selectedRestaurant && (
+          <div className="absolute inset-x-3 bottom-3 z-[1000] rounded-2xl border border-borde bg-white/95 p-4 text-musgo shadow-lg backdrop-blur sm:left-auto sm:max-w-[330px]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="m-0 text-xs font-semibold uppercase tracking-[0.12em] text-bosque">Tu ruta</p>
+                <strong className="mt-1 block text-base text-[#24402A]">{selectedRestaurant.name}</strong>
+              </div>
               <button
                 type="button"
-                className="mt-2 font-semibold text-bosque underline"
-                onClick={() => void handleDirections(selectedRestaurant)}
+                aria-label="Cerrar información de ruta"
+                className="rounded-full p-1 text-musgo hover:bg-arena"
+                onClick={() => {
+                  requestId.current += 1
+                  setSelectedRestaurantId(null)
+                  setRoute(null)
+                  setRouteError(null)
+                  setLoadingRoute(false)
+                }}
               >
-                Intentar de nuevo
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
-          )}
-          {route && !loadingRoute && (
-            <p className="m-0 mt-1">
-              {formatDistance(route.distanceKm)} · {Math.round(route.durationMinutes)} min
-              <br />
-              Ahorro estimado en bici: {estimatedSavings?.toFixed(2)} kg CO₂
-            </p>
-          )}
-        </div>
-      )}
+            {loadingRoute && (
+              <p className="m-0 mt-2 flex items-center gap-2 text-sm">
+                <Route size={16} className="animate-pulse text-terracota" aria-hidden="true" />
+                Calculando la mejor ruta…
+              </p>
+            )}
+            {routeError && (
+              <div className="mt-2">
+                <p className="m-0 text-sm">{routeError}</p>
+                <button
+                  type="button"
+                  className="mt-2 min-h-10 rounded-full bg-bosque px-4 text-sm font-semibold text-white"
+                  onClick={() => void handleDirections(selectedRestaurant)}
+                >
+                  Intentar de nuevo
+                </button>
+              </div>
+            )}
+            {route && !loadingRoute && (
+              <>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-arena px-3 py-2">
+                    <span className="flex items-center gap-1 text-xs text-musgo">
+                      <Route size={14} aria-hidden="true" />
+                      Distancia
+                    </span>
+                    <strong className="mt-1 block text-sm text-[#24402A]">{formatDistance(route.distanceKm)}</strong>
+                  </div>
+                  <div className="rounded-xl bg-arena px-3 py-2">
+                    <span className="flex items-center gap-1 text-xs text-musgo">
+                      <Clock3 size={14} aria-hidden="true" />
+                      Duración
+                    </span>
+                    <strong className="mt-1 block text-sm text-[#24402A]">
+                      {Math.round(route.durationMinutes)} min
+                    </strong>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-start gap-2 rounded-xl bg-[#EAF3E2] px-3 py-2 text-sm text-bosque">
+                  <Bike size={17} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <span>
+                    <strong>{estimatedSavings?.toFixed(2)} kg CO₂</strong> estimados evitados en bici.
+                    <small className="mt-0.5 block text-xs text-musgo">Cálculo orientativo, no es tu impacto oficial.</small>
+                  </span>
+                </div>
+              </>
+            )}
+            {!loadingRoute && !routeError && !route && (
+              <p className="m-0 mt-2 text-sm text-musgo">Permitinos acceder a tu ubicación para calcularla.</p>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-2 border-t border-borde bg-[#FBFAF6] px-5 py-3 text-xs text-musgo sm:px-6">
+        <Leaf size={15} className="text-bosque" aria-hidden="true" />
+        Elegí un local para ver el menú o calcular cómo llegar.
+      </div>
     </div>
   )
 }

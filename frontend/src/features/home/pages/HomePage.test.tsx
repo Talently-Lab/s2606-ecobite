@@ -91,6 +91,9 @@ describe('HomePage', () => {
     expect(screen.getByText('8.500', { exact: false })).toBeInTheDocument()
     expect(screen.getByText(data.howItWorks[0]!.description)).toBeInTheDocument()
     expect(screen.getByLabelText('Mapa de restaurantes')).toBeInTheDocument()
+    expect(screen.getAllByText('Restaurantes cerca tuyo')).toHaveLength(2)
+    expect(screen.getByText('1 locales ubicados en el mapa')).toBeInTheDocument()
+    expect(screen.getByText('Elegí un local para ver el menú o calcular cómo llegar.')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/home', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },

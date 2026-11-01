@@ -14,7 +14,7 @@ export class CheckoutController {
   ): Promise<void> {
     try {
       const result = await checkoutService.quote(
-        req.body 
+        req.body
       );
 
       res.status(200).json({

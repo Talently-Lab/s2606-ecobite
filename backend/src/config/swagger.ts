@@ -34,7 +34,11 @@ const options: swaggerJsdoc.Options = {
       },
       {
         name: "Checkout",
-        description: "Validación del carrito y cotización preliminar del pedido",
+        description: "Validación del carrito y cálculo preliminar de cotización",
+      },
+      {
+        name: "Administración",
+        description: "Indicadores generales y últimos pedidos para administradores",
       },
     ],
     components: {
@@ -153,10 +157,13 @@ const options: swaggerJsdoc.Options = {
             category: { type: "string", nullable: true, example: "Bowls" },
             estimatedDeliveryMinutes: { type: "integer", nullable: true, example: null },
             rating: { type: "number", nullable: true, example: null },
+            latitude: { type: "number", nullable: true, example: null },
+            longitude: { type: "number", nullable: true, example: null },
           },
           required: [
             "id", "name", "address", "biodegradablePackaging", "ecoIndicator",
             "imageUrl", "category", "estimatedDeliveryMinutes", "rating",
+            "latitude", "longitude"
           ],
         },
         CatalogDish: {
@@ -296,6 +303,89 @@ const options: swaggerJsdoc.Options = {
                 },
               },
               required: ["order", "myImpact"],
+            },
+          },
+          required: ["message", "data"],
+        },
+        CheckoutQuoteRequest: {
+          type: "object",
+          required: ["restaurantId", "zone", "items"],
+          properties: {
+            restaurantId: { type: "integer", minimum: 1, example: 1 },
+            zone: {
+              type: "string",
+              minLength: 1,
+              maxLength: 50,
+              example: "cercana",
+              description: "Zona indicada por el cliente. En esta cotización solo se valida que sea un texto de hasta 50 caracteres.",
+            },
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: 20,
+              items: {
+                type: "object",
+                required: ["dishId", "quantity"],
+                properties: {
+                  dishId: { type: "integer", minimum: 1, example: 16 },
+                  quantity: {
+                    type: "integer",
+                    minimum: 1,
+                    maximum: 20,
+                    example: 2,
+                  },
+                },
+              },
+              description: "Hasta 20 productos distintos; no se admiten identificadores de plato repetidos.",
+            },
+          },
+        },
+        CheckoutQuoteItem: {
+          type: "object",
+          properties: {
+            dishId: { type: "integer", example: 16 },
+            name: { type: "string", example: "Bowl quinoa" },
+            quantity: { type: "integer", example: 2 },
+            unitPrice: { type: "number", example: 4500 },
+            subtotal: { type: "number", example: 9000 },
+          },
+          required: ["dishId", "name", "quantity", "unitPrice", "subtotal"],
+        },
+        CheckoutQuoteResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Cotización calculada correctamente",
+            },
+            data: {
+              type: "object",
+              properties: {
+                restaurantId: { type: "integer", example: 1 },
+                restaurantName: { type: "string", example: "Verde Bowl" },
+                zone: { type: "string", example: "cercana" },
+                items: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/CheckoutQuoteItem" },
+                },
+                subtotal: { type: "number", example: 9000 },
+                deliveryFee: { type: "number", nullable: true, example: null },
+                total: { type: "number", nullable: true, example: null },
+                environmentalImpact: {
+                  type: "number",
+                  nullable: true,
+                  example: null,
+                },
+                requiresEnvironmentalRules: {
+                  type: "boolean",
+                  example: true,
+                },
+              },
+              required: [
+                "restaurantId", "restaurantName", "zone", "items", "subtotal",
+                "deliveryFee", "total", "environmentalImpact",
+                "requiresEnvironmentalRules",
+              ],
             },
           },
           required: ["message", "data"],
@@ -506,6 +596,65 @@ const options: swaggerJsdoc.Options = {
             },
             "404": {
               description: "Restaurante no encontrado o inactivo",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/checkout/cotizar": {
+        post: {
+          tags: ["Checkout"],
+          summary: "Calcular una cotización preliminar del carrito",
+          description:
+            "Valida el restaurante activo y los platos disponibles, y calcula los precios y subtotales usando los valores del catálogo. No crea pedidos ni calcula el costo de despacho, el total final o el impacto ambiental.",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CheckoutQuoteRequest" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Cotización calculada correctamente",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/CheckoutQuoteResponse" },
+                },
+              },
+            },
+            "400": {
+              description: "Datos del carrito, restaurante o productos inválidos",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente o inválido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Restaurante inexistente o no disponible",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "500": {
+              description: "Error interno o datos de precios inválidos en el catálogo",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },
@@ -879,158 +1028,96 @@ const options: swaggerJsdoc.Options = {
           },
         },
       },
-      "/api/checkout/cotizar": {
-        post: {
-          tags: ["Checkout"],
-          summary: "Cotizar el carrito",
+      "/api/admin/dashboard": {
+        get: {
+          tags: ["Administración"],
+          summary: "Obtener el panel administrativo",
           description:
-            "Valida el restaurante, la disponibilidad de los productos y las cantidades. Calcula los subtotales usando los precios actuales del catálogo. No crea un pedido. El costo de entrega, el total final y el impacto ambiental quedan pendientes de reglas de negocio aprobadas.",
+            "Devuelve indicadores generales y los últimos 10 pedidos. Requiere un usuario autenticado con rol admin.",
           security: [{ bearerAuth: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  required: ["restaurantId", "zone", "items"],
-                  properties: {
-                    restaurantId: {
-                      type: "integer",
-                      minimum: 1,
-                      example: 1,
-                    },
-                    zone: {
-                      type: "string",
-                      minLength: 1,
-                      maxLength: 50,
-                      example: "Palermo",
-                    },
-                    items: {
-                      type: "array",
-                      description:
-                        "Entre 1 y 20 productos distintos. Cada dishId debe aparecer una sola vez.",
-                      minItems: 1,
-                      maxItems: 20,
-                      items: {
-                        type: "object",
-                        required: ["dishId", "quantity"],
-                        properties: {
-                          dishId: {
-                            type: "integer",
-                            minimum: 1,
-                            example: 1,
-                          },
-                          quantity: {
-                            type: "integer",
-                            minimum: 1,
-                            maximum: 20,
-                            description: "Máximo técnico provisional: 20 unidades por producto.",
-                            example: 2,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                example: {
-                  restaurantId: 1,
-                  zone: "Palermo",
-                  items: [{ dishId: 1, quantity: 2 }],
-                },
-              },
-            },
-          },
           responses: {
             "200": {
-              description: "Cotización preliminar calculada",
+              description: "Panel administrativo obtenido correctamente",
               content: {
                 "application/json": {
                   schema: {
                     type: "object",
-                    required: ["message", "data"],
                     properties: {
                       message: { type: "string" },
                       data: {
                         type: "object",
                         properties: {
-                          restaurantId: { type: "integer" },
-                          restaurantName: { type: "string" },
-                          zone: { type: "string" },
-                          items: {
+                          summary: {
+                            type: "object",
+                            properties: {
+                              co2SavedKg: { type: "number", example: 12.5 },
+                              ordersCount: { type: "integer", example: 60 },
+                              activeRestaurantsCount: {
+                                type: "integer",
+                                example: 7,
+                              },
+                              averageTicket: { type: "number", example: 8500 },
+                            },
+                            required: [
+                              "co2SavedKg",
+                              "ordersCount",
+                              "activeRestaurantsCount",
+                              "averageTicket",
+                            ],
+                          },
+                          recentOrders: {
                             type: "array",
                             items: {
                               type: "object",
                               properties: {
-                                dishId: { type: "integer" },
-                                name: { type: "string" },
-                                quantity: { type: "integer" },
-                                unitPrice: { type: "number" },
-                                subtotal: { type: "number" },
+                                id: { type: "integer", example: 42 },
+                                date: {
+                                  type: "string",
+                                  format: "date-time",
+                                },
+                                customer: { type: "string", example: "Ana Pérez" },
+                                restaurant: {
+                                  type: "string",
+                                  example: "Verde Bowl",
+                                },
+                                zone: { type: "string", example: "cercana" },
+                                total: { type: "number", example: 9000 },
+                                co2SavedKg: {
+                                  type: "number",
+                                  nullable: true,
+                                  example: 0.1,
+                                },
+                                status: {
+                                  type: "string",
+                                  example: "completed",
+                                },
                               },
+                              required: [
+                                "id",
+                                "date",
+                                "customer",
+                                "restaurant",
+                                "zone",
+                                "total",
+                                "co2SavedKg",
+                                "status",
+                              ],
                             },
                           },
-                          subtotal: { type: "number" },
-                          deliveryFee: {
-                            type: "number",
-                            nullable: true,
-                            example: null,
-                          },
-                          total: {
-                            type: "number",
-                            nullable: true,
-                            example: null,
-                          },
-                          environmentalImpact: {
-                            type: "object",
-                            nullable: true,
-                            description:
-                              "Actualmente null. El cálculo ambiental queda pendiente de reglas de negocio aprobadas.",
-                            additionalProperties: true,
-                            example: null,
-                          },
-                          requiresEnvironmentalRules: {
-                            type: "boolean",
-                            example: true,
-                          },
                         },
+                        required: ["summary", "recentOrders"],
                       },
                     },
+                    required: ["message", "data"],
                   },
                 },
               },
             },
-            "400": {
-              description: "Carrito inválido o productos no disponibles",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
-                },
-              },
-            },
             "401": {
-              description: "Falta el token o no es válido",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
-                },
-              },
+              description: "Token ausente o inválido",
             },
-            "404": {
-              description: "Restaurante no encontrado o inactivo",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
-                },
-              },
-            },
-            "500": {
-              description:
-                "Error interno al validar el catálogo o calcular los subtotales",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/ErrorResponse" },
-                },
-              },
+            "403": {
+              description: "El usuario autenticado no tiene rol admin",
             },
           },
         },

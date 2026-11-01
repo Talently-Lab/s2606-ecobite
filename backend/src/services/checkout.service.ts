@@ -231,7 +231,7 @@ export class CheckoutService {
         subtotal,
       };
     });
-      
+
     const rawCartSubtotal = items.reduce(
       (sum, item) => sum + item.subtotal,
       0

@@ -36,6 +36,8 @@ const mapearRestaurante = (
     id_restaurante: number;
     nombre: string;
     direccion: string;
+    latitud: { toNumber(): number } | null;
+    longitud: { toNumber(): number } | null;
     envase_biodegradable: boolean;
     indicador_eco: string;
     platillos: { nombre: string }[];
@@ -61,6 +63,8 @@ const mapearRestaurante = (
     category: categorias.length === 1 ? categorias[0] : null,
     estimatedDeliveryMinutes: null,
     rating: null,
+    latitude: restaurante.latitud?.toNumber() ?? null,
+    longitude: restaurante.longitud?.toNumber() ?? null,
   };
 };
 
@@ -113,6 +117,8 @@ export const getRestaurantCatalog = async (
       id_restaurante: true,
       nombre: true,
       direccion: true,
+      latitud: true,
+      longitud: true,
       envase_biodegradable: true,
       indicador_eco: true,
       platillos: {
@@ -164,6 +170,8 @@ export const getRestaurantMenu = async (
       id_restaurante: true,
       nombre: true,
       direccion: true,
+      latitud: true,
+      longitud: true,
       envase_biodegradable: true,
       indicador_eco: true,
       platillos: {

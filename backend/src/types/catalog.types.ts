@@ -31,6 +31,8 @@ export interface RestaurantCatalogDto extends RestaurantDto {
   category: string | null;
   estimatedDeliveryMinutes: number | null;
   rating: number | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 /**

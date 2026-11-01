@@ -157,10 +157,13 @@ const options: swaggerJsdoc.Options = {
             category: { type: "string", nullable: true, example: "Bowls" },
             estimatedDeliveryMinutes: { type: "integer", nullable: true, example: null },
             rating: { type: "number", nullable: true, example: null },
+            latitude: { type: "number", nullable: true, example: null },
+            longitude: { type: "number", nullable: true, example: null },
           },
           required: [
             "id", "name", "address", "biodegradablePackaging", "ecoIndicator",
             "imageUrl", "category", "estimatedDeliveryMinutes", "rating",
+            "latitude", "longitude"
           ],
         },
         CatalogDish: {

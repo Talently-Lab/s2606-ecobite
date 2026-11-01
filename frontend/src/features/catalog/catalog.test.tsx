@@ -138,7 +138,7 @@ describe('Catálogo y acceso al menú', () => {
     expect(within(cart).getByText('2 unidades en tu carrito')).toBeInTheDocument()
     expect(within(cart).getByText('Subtotal').parentElement).toHaveTextContent('9.000')
     expect(within(cart).getByText(/CO₂ estimado del pedido:/)).toHaveTextContent('0,1 kg')
-    expect(screen.getByRole('button', { name: 'Ir a pagar' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Ir a pagar' })).toBeEnabled()
     await user.click(within(cart).getByRole('button', { name: 'Quitar una unidad de Bowl quinoa' }))
     await user.click(within(cart).getByRole('button', { name: 'Quitar una unidad de Bowl quinoa' }))
     expect(within(cart).getByText('Tu carrito está vacío.')).toBeInTheDocument()

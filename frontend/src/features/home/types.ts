@@ -4,6 +4,8 @@ export interface Restaurant {
   address: string
   biodegradablePackaging: boolean
   ecoIndicator: string
+  latitude: number | null
+  longitude: number | null
 }
 
 export interface FeaturedDish {

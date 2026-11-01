@@ -1,6 +1,6 @@
 import { ArrowLeft, Leaf, MapPin, Minus, Plus, ShoppingCart, CreditCard } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/features/auth'
 import { ApiError } from '@/shared/lib/http'
 import { Alert, Button, TextField } from '@/shared/components/ui'
@@ -18,6 +18,7 @@ export function RestaurantMenuPage() {
 }
 
 function RestaurantMenuContent({ id }: { id: string }) {
+  const navigate = useNavigate()
   const validId = /^\d+$/.test(id) && Number.isSafeInteger(Number(id)) && Number(id) > 0
   const [result, setResult] = useState<{ data?: RestaurantMenu; error?: string } | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -196,11 +197,24 @@ function RestaurantMenuContent({ id }: { id: string }) {
               <p className="text-sm text-musgo">
                 Estimación según los platos seleccionados. No se suma a tu impacto hasta completar un pedido.
               </p>
-              <Button disabled type="button" aria-describedby="checkout-pending" className="w-full">
+              <Button
+                disabled={count === 0}
+                type="button"
+                className="w-full"
+                onClick={() =>
+                  navigate(ROUTES.checkout, {
+                    state: {
+                      restaurantId: data.restaurant.id,
+                      zone: 'cercana',
+                      items: items.map((dish) => ({ dishId: dish.id, quantity: cart[dish.id] })),
+                    },
+                  })
+                }
+              >
                 <CreditCard className="size-5" aria-hidden="true" /> Ir a pagar
               </Button>
-              <p id="checkout-pending" className="text-sm text-musgo">
-                El checkout está pendiente de integración. Aún no se pueden confirmar ni pagar pedidos.
+              <p className="text-sm text-musgo">
+                El total y el impacto se confirman con los valores persistidos del pedido.
               </p>
             </aside>
           </div>

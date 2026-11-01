@@ -13,6 +13,15 @@ const restaurant = {
   address: 'Av. Verde 123',
   biodegradablePackaging: true,
   ecoIndicator: 'Reparto sustentable',
+  latitude: -34.6037,
+  longitude: -58.3816,
+}
+const restaurantWithoutCoordinates = {
+  ...restaurant,
+  id: 2,
+  name: 'Local sin coordenadas',
+  latitude: undefined,
+  longitude: undefined,
 }
 const data: HomeData = {
   userImpact: null,
@@ -74,20 +83,33 @@ describe('HomePage', () => {
   it('consulta Home sin JWT para visitantes y muestra los datos reales', async () => {
     fetchMock.mockResolvedValue(response({ message: 'Datos obtenidos correctamente', data }))
     renderHome()
-    expect(screen.getByRole('status')).toHaveTextContent('Cargando Home')
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando restaurantes')
     expect(await screen.findByText(restaurant.address)).toBeInTheDocument()
     expect(screen.getByText('Envase biodegradable')).toBeInTheDocument()
     expect(screen.getByText(restaurant.ecoIndicator)).toBeInTheDocument()
     expect(screen.getByText('Bowl de quinoa')).toBeInTheDocument()
     expect(screen.getByText('8.500', { exact: false })).toBeInTheDocument()
     expect(screen.getByText(data.howItWorks[0]!.description)).toBeInTheDocument()
-    expect(screen.getByText('Ingresá para consultar tu CO₂ ahorrado')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mapa de restaurantes')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/home', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       body: undefined,
     })
+
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('mantiene la página cuando un restaurante no tiene coordenadas', async () => {
+    fetchMock.mockResolvedValue(
+      response({
+        message: 'Datos obtenidos correctamente',
+        data: { ...data, restaurants: [restaurant, restaurantWithoutCoordinates] },
+      }),
+    )
+    renderHome()
+    expect(await screen.findByText('Local sin coordenadas')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mapa de restaurantes')).toBeInTheDocument()
   })
 
   it('filtra los platos destacados con las categorías de la API', async () => {
@@ -114,9 +136,9 @@ describe('HomePage', () => {
       }),
     )
     renderHome()
-    expect(await screen.findByText('0 kg')).toBeInTheDocument()
-    expect(screen.getByText('de CO₂ ahorrados en tus pedidos')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenLastCalledWith(
+    expect(await screen.findByLabelText('Mapa de restaurantes')).toBeInTheDocument()
+    expect(await screen.findByText(restaurant.address)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:3000/api/home',
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: 'Bearer jwt-valido' }),
@@ -138,9 +160,8 @@ describe('HomePage', () => {
     fetchMock.mockResolvedValue(response({ message: 'Datos obtenidos correctamente', data }))
     const user = userEvent.setup()
     renderHome()
-    expect(await screen.findByText('2,5 kg')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Mapa de restaurantes')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
-    expect(screen.queryByText('2,5 kg')).not.toBeInTheDocument()
     expect(await screen.findByText(restaurant.address)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenLastCalledWith('http://localhost:3000/api/home', {
       method: 'GET',

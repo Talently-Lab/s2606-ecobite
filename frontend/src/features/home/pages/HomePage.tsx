@@ -1,5 +1,17 @@
 import { SiteFooter } from '@/shared/components/SiteFooter'
-import { Bike, ChartColumn, ChevronRight, Leaf, MapPin, Package, Search, ShoppingCart, Store, UserRound } from 'lucide-react'
+import {
+  Bike,
+  ChartColumn,
+  ChevronRight,
+  Leaf,
+  LoaderCircle,
+  MapPin,
+  Package,
+  Search,
+  ShoppingCart,
+  Store,
+  UserRound,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth'
@@ -7,6 +19,7 @@ import { Alert } from '@/shared/components/ui'
 import isotipo from '@/shared/assets/logo-isotipo.png'
 import wordmark from '@/shared/assets/logo-wordmark.png'
 import { useHome } from '../hooks/useHome'
+import { RestaurantMap } from '../components/RestaurantMap'
 import { ROUTES, restaurantMenuUrl } from '@/shared/config/routes'
 
 export function HomePage() {
@@ -70,10 +83,15 @@ export function HomePage() {
               <img src={isotipo} alt="" style={{ height: '44px', width: 'auto' }} />
               <img src={wordmark} alt="EcoBite" style={{ height: '30px', width: 'auto' }} />
             </a>
-            <Link to={ROUTES.restaurants} className="flex min-h-12 flex-1 items-center rounded-full bg-arena px-5">Buscar restaurantes</Link>
+            <Link
+              to={ROUTES.restaurants}
+              className="flex min-h-12 flex-1 items-center rounded-full bg-arena px-5"
+            >
+              Buscar restaurantes
+            </Link>
             <nav style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-              <a
-                href="#impacto"
+              <Link
+                to={ROUTES.impact}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -86,7 +104,7 @@ export function HomePage() {
               >
                 <Leaf size={20} aria-hidden="true" />
                 Mi impacto
-              </a>
+              </Link>
               {usuario ? (
                 <span>{usuario.nombre}</span>
               ) : (
@@ -135,7 +153,6 @@ export function HomePage() {
           </div>
         </header>
 
-        {loading && <p role="status">Cargando Home…</p>}
         {error && <Alert>{error}</Alert>}
 
         <section
@@ -285,104 +302,20 @@ export function HomePage() {
             </div>
           </div>
 
-          <div
-            style={{
-              flex: '1 1 380px',
-              minWidth: '0',
-              display: 'flex',
-              justifyContent: 'center',
-              position: 'relative',
-              padding: '40px 0',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                width: '420px',
-                height: '420px',
-                maxWidth: '100%',
-                borderRadius: '50%',
-                background: '#BBDB9B',
-                opacity: '0.5',
-                top: '0',
-                left: '50%',
-                transform: 'translateX(-45%)',
-              }}
-            ></div>
-            <div
-              style={{
-                position: 'absolute',
-                width: '140px',
-                height: '140px',
-                borderRadius: '50%',
-                background: '#F6E8DE',
-                top: '8px',
-                right: '0',
-              }}
-            ></div>
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                maxWidth: '400px',
-                boxSizing: 'border-box',
-                background: '#436844',
-                color: '#FFFFFF',
-                borderRadius: '24px',
-                padding: '32px',
-                boxShadow: '0 16px 48px rgb(30 43 34 / 0.14)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-              }}
-            >
+          <div style={{ flex: '1 1 380px', minWidth: '0' }}>
+            {loading ? (
               <div
-                style={{
-                  position: 'absolute',
-                  width: '260px',
-                  height: '260px',
-                  borderRadius: '50%',
-                  background: '#BBDB9B',
-                  opacity: '0.16',
-                  top: '-90px',
-                  right: '-70px',
-                }}
-              ></div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span
-                  style={{ fontSize: '12px', fontWeight: '600', letterSpacing: '0.12em', color: '#BBDB9B' }}
-                >
-                  TU IMPACTO
-                </span>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    background: '#F7F5EF',
-                    borderRadius: '999px',
-                    padding: '8px 10px',
-                  }}
-                >
-                  <img src={isotipo} alt="" style={{ height: '40px', width: 'auto' }} />
-                </span>
-              </div>
-              <div id="impacto"
-                style={{
-                  fontFamily: "'Poppins', sans-serif",
-                  fontWeight: '700',
-                  fontSize: '64px',
-                  lineHeight: '1',
-                  letterSpacing: '-0.03em',
-                }}
+                role="status"
+                className="flex h-[420px] w-full items-center justify-center rounded-3xl border border-borde bg-white text-musgo shadow-[0_16px_48px_rgb(30_43_34/0.14)]"
               >
-                {data?.userImpact != null ? `${data.userImpact.co2SavedKg.toLocaleString('es-AR')} kg` : '—'}
+                <span className="flex items-center gap-2">
+                  <LoaderCircle className="size-5 animate-spin text-bosque" aria-hidden="true" />
+                  Cargando restaurantes…
+                </span>
               </div>
-              <p style={{ margin: '0', fontSize: '16px', lineHeight: '1.5' }}>
-                {data?.userImpact != null
-                  ? 'de CO₂ ahorrados en tus pedidos'
-                  : 'Ingresá para consultar tu CO₂ ahorrado'}
-              </p>
-            </div>
+            ) : (
+              <RestaurantMap restaurants={restaurants} />
+            )}
           </div>
         </section>
 
@@ -481,7 +414,9 @@ export function HomePage() {
                 key={restaurant.id}
                 style={{ flex: '1 1 260px', background: '#FFFFFF', borderRadius: '16px', padding: '24px' }}
               >
-                <h3><Link to={restaurantMenuUrl(restaurant.id)}>{restaurant.name}</Link></h3>
+                <h3>
+                  <Link to={restaurantMenuUrl(restaurant.id)}>{restaurant.name}</Link>
+                </h3>
                 <p>{restaurant.address}</p>
                 <p>{restaurant.ecoIndicator}</p>
                 {restaurant.biodegradablePackaging && <span>Envase biodegradable</span>}
@@ -513,7 +448,9 @@ export function HomePage() {
                   key={dish.id}
                   style={{ flex: '1 1 260px', background: '#FFFFFF', borderRadius: '16px', padding: '24px' }}
                 >
-                  <h3><Link to={restaurantMenuUrl(dish.restaurant.id)}>{dish.name}</Link></h3>
+                  <h3>
+                    <Link to={restaurantMenuUrl(dish.restaurant.id)}>{dish.name}</Link>
+                  </h3>
                   <p>{dish.restaurant.name}</p>
                   {dish.category && <p>{dish.category}</p>}
                   <p>$ {dish.price.toLocaleString('es-AR')}</p>
@@ -526,23 +463,148 @@ export function HomePage() {
         )}
 
         <section style={{ background: '#FFFFFF' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '72px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '40px' }}>
-            <h2 style={{ margin: '0', fontFamily: "'Poppins', sans-serif", fontWeight: '600', fontSize: '32px', lineHeight: '1.25', letterSpacing: '-0.01em', textAlign: 'center' }}>Pedir rico y cuidar el planeta es igual de fácil</h2>
+          <div
+            style={{
+              maxWidth: '1200px',
+              margin: '0 auto',
+              padding: '72px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '40px',
+            }}
+          >
+            <h2
+              style={{
+                margin: '0',
+                fontFamily: "'Poppins', sans-serif",
+                fontWeight: '600',
+                fontSize: '32px',
+                lineHeight: '1.25',
+                letterSpacing: '-0.01em',
+                textAlign: 'center',
+              }}
+            >
+              Pedir rico y cuidar el planeta es igual de fácil
+            </h2>
             <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: '24px' }}>
-              <div style={{ flex: '1 1 280px', background: '#F7F5EF', borderRadius: '24px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <span style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#BBDB9B', color: '#24402A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Store size={28} aria-hidden="true" /></span>
-                <h3 style={{ margin: '0', fontFamily: "'Poppins', sans-serif", fontWeight: '600', fontSize: '20px' }}>1. Elegí un local eco</h3>
-                <p style={{ margin: '0', color: '#5A6B5E' }}>{data?.howItWorks[0]?.description ?? 'Explorá los restaurantes disponibles y conocé sus opciones.'}</p>
+              <div
+                style={{
+                  flex: '1 1 280px',
+                  background: '#F7F5EF',
+                  borderRadius: '24px',
+                  padding: '32px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <span
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '16px',
+                    background: '#BBDB9B',
+                    color: '#24402A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Store size={28} aria-hidden="true" />
+                </span>
+                <h3
+                  style={{
+                    margin: '0',
+                    fontFamily: "'Poppins', sans-serif",
+                    fontWeight: '600',
+                    fontSize: '20px',
+                  }}
+                >
+                  1. Elegí un local eco
+                </h3>
+                <p style={{ margin: '0', color: '#5A6B5E' }}>
+                  {data?.howItWorks[0]?.description ??
+                    'Explorá los restaurantes disponibles y conocé sus opciones.'}
+                </p>
               </div>
-              <div                   style={{ flex: '1 1 280px', background: '#F7F5EF', borderRadius: '24px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '12px' }}                >
-                  <span style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#BBDB9B', color: '#24402A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ShoppingCart size={28} aria-hidden="true" /></span>
-                <h3 style={{ margin: '0', fontFamily: "'Poppins', sans-serif", fontWeight: '600', fontSize: '20px' }}>2. Pedí como siempre                  </h3>
-                  <p style={{ margin: '0', color: '#5A6B5E' }}>Armá tu pedido y confirmalo en un par de clics.</p>
+              <div
+                style={{
+                  flex: '1 1 280px',
+                  background: '#F7F5EF',
+                  borderRadius: '24px',
+                  padding: '32px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <span
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '16px',
+                    background: '#BBDB9B',
+                    color: '#24402A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ShoppingCart size={28} aria-hidden="true" />
+                </span>
+                <h3
+                  style={{
+                    margin: '0',
+                    fontFamily: "'Poppins', sans-serif",
+                    fontWeight: '600',
+                    fontSize: '20px',
+                  }}
+                >
+                  2. Pedí como siempre{' '}
+                </h3>
+                <p style={{ margin: '0', color: '#5A6B5E' }}>
+                  Armá tu pedido y confirmalo en un par de clics.
+                </p>
               </div>
-              <div style={{ flex: '1 1 280px', background: '#F7F5EF', borderRadius: '24px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <span style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#BBDB9B', color: '#24402A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Leaf size={28} aria-hidden="true" /></span>
-                <h3 style={{ margin: '0', fontFamily: "'Poppins', sans-serif", fontWeight: '600', fontSize: '20px' }}>3. Mirá tu impacto</h3>
-                <p style={{ margin: '0', color: '#5A6B5E' }}>Te mostramos el CO₂ que ahorraste y lo vas sumando pedido a pedido.</p>
+              <div
+                style={{
+                  flex: '1 1 280px',
+                  background: '#F7F5EF',
+                  borderRadius: '24px',
+                  padding: '32px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <span
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '16px',
+                    background: '#BBDB9B',
+                    color: '#24402A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Leaf size={28} aria-hidden="true" />
+                </span>
+                <h3
+                  style={{
+                    margin: '0',
+                    fontFamily: "'Poppins', sans-serif",
+                    fontWeight: '600',
+                    fontSize: '20px',
+                  }}
+                >
+                  3. Mirá tu impacto
+                </h3>
+                <p style={{ margin: '0', color: '#5A6B5E' }}>
+                  Te mostramos el CO₂ que ahorraste y lo vas sumando pedido a pedido.
+                </p>
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { GuestRoute, LoginPage, ProtectedRoute, RegisterPage } from '@/features/
 import { MethodologyPage, JoinPage, ContactPage } from '@/features/information'
 import { HomePage } from '@/features/home'
 import { RestaurantCatalogPage, RestaurantMenuPage } from '@/features/catalog'
-import { CheckoutPage } from '@/features/panel'
+import { CheckoutPage, ConfirmacionPedido, ImpactoPage, PanelAdmin } from '@/features/panel'
 import { ROUTES } from '@/shared/config/routes'
 
 export function AppRoutes() {
@@ -22,6 +22,11 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path={ROUTES.restaurantMenu} element={<RestaurantMenuPage />} />
         <Route path={ROUTES.checkout} element={<CheckoutPage />} />
+        <Route path={ROUTES.orderConfirmation} element={<ConfirmacionPedido />} />
+        <Route path={ROUTES.impact} element={<ImpactoPage />} />
+      </Route>
+      <Route element={<ProtectedRoute roles={['admin']} />}>
+        <Route path={ROUTES.admin} element={<PanelAdmin />} />
       </Route>
       <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
     </Routes>

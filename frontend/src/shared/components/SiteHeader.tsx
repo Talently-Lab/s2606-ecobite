@@ -1,56 +1,61 @@
+import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { LogIn, LogOut, Store, UserRound } from 'lucide-react'
+import { ArrowUpRight, Menu, X, Leaf } from 'lucide-react'
 import { useAuth } from '@/features/auth'
 import { Logo } from './Logo'
 import { ROUTES } from '@/shared/config/routes'
 
 export function SiteHeader() {
   const { usuario, logout } = useAuth()
+  const [open, setOpen] = useState(false)
   return (
-    <header className="border-b border-borde bg-crema/95">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8">
-        <Link
-          to={ROUTES.home}
-          aria-label="EcoBite, inicio"
-          className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bosque"
-        >
+    <header className="site-header">
+      <div className="site-header-inner">
+        <Link to={ROUTES.home} aria-label="EcoBite, inicio">
           <Logo />
         </Link>
-        <nav
-          aria-label="Navegación principal"
-          className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium"
+        <button
+          className="nav-toggle"
+          type="button"
+          aria-expanded={open}
+          aria-controls="site-navigation"
+          aria-label={open ? 'Cerrar navegación' : 'Abrir navegación'}
+          onClick={() => setOpen(!open)}
         >
-          <NavLink to={ROUTES.restaurants} className="inline-flex min-h-11 items-center gap-2">
-            <Store className="size-4" aria-hidden="true" />
-            Restaurantes
-          </NavLink>
-          <NavLink to={ROUTES.methodology} className="inline-flex min-h-11 items-center">
-            Nuestro impacto
-          </NavLink>
+          {open ? <X /> : <Menu />}
+        </button>
+        <nav
+          id="site-navigation"
+          aria-label="Navegación principal"
+          className={`site-nav ${open ? 'is-open' : ''}`}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest('a')) setOpen(false)
+          }}
+        >
+          <NavLink to={ROUTES.restaurants}>Restaurantes</NavLink>
+          <NavLink to={ROUTES.methodology}>Nuestro impacto</NavLink>
           {usuario ? (
             <>
-              <span className="inline-flex items-center gap-2 text-musgo">
-                <UserRound className="size-4" aria-hidden="true" />
-                Hola, {usuario.nombre}
-              </span>
+              <NavLink to={ROUTES.impact}>
+                <Leaf size={16} aria-hidden="true" /> Mi impacto
+              </NavLink>
+              <span className="nav-user">Hola, {usuario.nombre}</span>
               <button
                 type="button"
-                onClick={logout}
-                className="inline-flex min-h-11 cursor-pointer items-center gap-2 underline underline-offset-4"
+                onClick={() => {
+                  logout()
+                  setOpen(false)
+                }}
               >
-                <LogOut className="size-4" aria-hidden="true" />
                 Cerrar sesión
               </button>
             </>
           ) : (
-            <Link
-              to={ROUTES.login}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-bosque px-5"
-            >
-              <LogIn className="size-4" aria-hidden="true" />
-              Ingresar
-            </Link>
+            <Link to={ROUTES.login}>Ingresar</Link>
           )}
+          <Link className="eco-button nav-cta" to={ROUTES.restaurants}>
+            Explorar restaurantes <ArrowUpRight size={18} aria-hidden="true" />
+          </Link>
         </nav>
       </div>
     </header>

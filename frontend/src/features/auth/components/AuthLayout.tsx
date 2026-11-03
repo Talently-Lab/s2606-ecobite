@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import bowl from '@/shared/assets/hero-bowl.webp'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from '@/shared/components/Logo'
 import { returnTo } from '../routes/returnTo'
@@ -21,7 +22,7 @@ export function AuthLayout({ intro, extra, children }: AuthLayoutProps) {
   const from = returnTo(useLocation().state)
   return (
     <div className="flex min-h-screen flex-wrap bg-crema">
-      <aside className="relative flex min-h-80 min-w-0 flex-[1_1_420px] flex-col justify-between gap-10 overflow-hidden bg-bosque p-8 text-white sm:p-12">
+      <aside className="auth-brand relative flex min-h-80 min-w-0 flex-[1_1_420px] flex-col justify-between gap-10 overflow-hidden bg-bosque p-8 text-white sm:p-12">
         <div className="pointer-events-none absolute -top-45 -right-50 size-130 rounded-full bg-brote opacity-15" />
         <div className="pointer-events-none absolute -bottom-35 -left-25 size-80 rounded-full bg-noche opacity-55" />
 
@@ -41,6 +42,7 @@ export function AuthLayout({ intro, extra, children }: AuthLayoutProps) {
           {extra}
         </div>
 
+        <img src={bowl} alt="" width="320" height="320" className="auth-brand-art" />
         <span className="relative text-[13px] text-niebla">Delivery sustentable · Talently Lab S2606</span>
       </aside>
 

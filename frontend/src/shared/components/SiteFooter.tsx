@@ -5,14 +5,14 @@ import { ROUTES } from '@/shared/config/routes'
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-bosque/10 bg-niebla">
-      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
+    <footer className="border-t border-bosque/15 bg-[#e8eddf]">
+      <div className="mx-auto max-w-[1344px] px-5 py-12 sm:px-12 sm:py-16">
         <div className="flex flex-col justify-between gap-8 sm:flex-row sm:items-start">
           <div className="max-w-xs space-y-4">
             <Link to={ROUTES.home} aria-label="EcoBite, inicio" className="inline-block">
               <Logo />
             </Link>
-            <p className="text-sm leading-relaxed text-musgo">
+            <p className="font-display text-2xl leading-relaxed text-noche">
               Comer rico. Elegir mejor.
               <br />
               Pequeñas decisiones, un impacto que suma.

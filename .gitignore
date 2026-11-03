@@ -9,6 +9,7 @@ coverage/
 /.agents/
 /.codex/
 /.aws
+/frontend/assets/
 
 # AWS SAM build artifacts
 .aws-sam/

@@ -59,7 +59,7 @@ src/
       types.ts          Tipos y contrato de la API de auth
       validation.ts     Validaciones (+ tests)
       index.ts          API pública de la feature
-    home/               Inicio (placeholder)
+    home/               Portada y mapa
   shared/
     assets/             Logos
     components/ui/      Button, TextField, PasswordField, Alert…
@@ -87,6 +87,36 @@ src/
 
 - `/login`: ingreso (EB-06).
 - `/registro`: creación de cuenta con rol `cliente` (EB-05).
-- `/`: placeholder de la Home.
+- `/`: portada y mapa interactivo de restaurantes.
 
 El contrato de auth que espera el front está documentado en `src/features/auth/types.ts`.
+
+## Diseño y movimiento
+
+La interfaz usa Fraunces para títulos e Inter para lectura. El hero de descubrimiento
+usa Inter en su título «Encontrá dónde comer.» y agrupa «Ver restaurantes» y
+«Explorar el mapa» en un solo bloque de acciones. La portada carga GSAP,
+ScrollTrigger bajo demanda. La inicialización espera al montaje del contenedor,
+incluso cuando el módulo ya está en caché. Las animaciones y los listeners se
+limpian al salir; imágenes del hero y fuentes disparan el recálculo de medidas.
+El hero se transforma en un mapa de ancho completo mediante zoom del bowl y apertura
+circular. En escritorio se fija temporalmente la escena durante el scroll; en móvil
+se usa una revelación breve en flujo normal. Se respeta `prefers-reduced-motion` y
+el enlace «Explorar el mapa» permite saltar la animación.
+
+El mapa se prepara al recibir las ubicaciones, independientemente del scroll:
+se inicializa con los límites reales y se revela tras montar los marcadores y
+ajustar el encuadre. Mientras se esperan los datos se muestra un fondo neutro.
+Los avisos de tamaño repetidos no vuelven a centrarlo; solo un cambio real de
+dimensiones recalcula el encuadre. Los mosaicos de OpenStreetMap se cargan aparte.
+
+La portada no muestra tarjetas ni categorías. Los marcadores abren una ficha con
+nombre, dirección e información ecológica. «Ver más» lleva a
+`/restaurantes?restaurante=ID`; el catálogo filtra el resultado actual por ID sin
+modificar la API y ofrece «Ver todos» para quitar la selección.
+Los WebP de marca y sus prompts están en `src/shared/assets/GENERATED-ASSETS.md`.
+Las tarjetas usan exclusivamente las imágenes recibidas de la API o un estado sin fotografía.
+
+`Mi impacto` consulta el CO₂ acumulado de `/home`. No muestra historial ni métricas
+sin fuente real. Los campos opcionales `imageUrl` y `communityImpact` permiten usar
+la respuesta actual de inicio y conservar compatibilidad con respuestas anteriores.

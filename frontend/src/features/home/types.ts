@@ -1,6 +1,7 @@
 export interface Restaurant {
   id: number
   name: string
+  imageUrl?: string | null
   address: string
   biodegradablePackaging: boolean
   ecoIndicator: string
@@ -9,6 +10,7 @@ export interface Restaurant {
 }
 
 export interface FeaturedDish {
+  imageUrl?: string | null
   id: number
   name: string
   price: number
@@ -18,6 +20,7 @@ export interface FeaturedDish {
 }
 
 export interface HomeData {
+  communityImpact?: { co2SavedKg: number } | null
   userImpact: { co2SavedKg: number } | null
   categories: { id: number; name: string; slug: string }[]
   restaurants: Restaurant[]

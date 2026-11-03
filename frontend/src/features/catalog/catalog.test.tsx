@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/features/auth'
 import { AppRoutes } from '@/app/router'
@@ -58,6 +58,61 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Catálogo y acceso al menú', () => {
+  it('muestra únicamente el ID de la URL y permite recuperar todos los locales', async () => {
+    fetchMock.mockResolvedValue(json({ data: [restaurant, { ...restaurant, id: 2, name: 'Raíz Cocina' }] }))
+    const user = mount('/restaurantes?restaurante=2')
+    expect(await screen.findByRole('link', { name: 'Raíz Cocina' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Verde Bowl' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Buscar restaurantes')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/restaurantes', expect.anything())
+    await user.click(screen.getByRole('button', { name: 'Ver todos' }))
+    expect(await screen.findByRole('link', { name: 'Verde Bowl' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Raíz Cocina' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Buscar restaurantes')).toBeInTheDocument()
+  })
+
+  it.each(['999', '0', '-1', 'abc', '1.5', '9007199254740992', ''])(
+    'maneja una selección inválida o inexistente: %s',
+    async (id) => {
+      const user = mount(`/restaurantes?restaurante=${id}`)
+      expect(await screen.findByText(/El restaurante seleccionado no está disponible/)).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Verde Bowl' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Ver todos' }))
+      expect(await screen.findByRole('link', { name: 'Verde Bowl' })).toBeInTheDocument()
+    },
+  )
+
+  it('restaura la selección con el historial y conserva otros parámetros al quitarla', async () => {
+    function HistoryControls() {
+      const navigate = useNavigate()
+      const location = useLocation()
+      return (
+        <>
+          <button onClick={() => navigate(-1)}>Atrás</button>
+          <button onClick={() => navigate(1)}>Adelante</button>
+          <output aria-label="URL del catálogo">{location.search}</output>
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/restaurantes?restaurante=1&origen=mapa']}>
+        <AuthProvider>
+          <AppRoutes />
+          <HistoryControls />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByRole('link', { name: 'Verde Bowl' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ver todos' }))
+    expect(screen.getByLabelText('URL del catálogo')).toHaveTextContent('?origen=mapa')
+    await user.click(screen.getByRole('button', { name: 'Atrás' }))
+    expect(screen.getByText('LOCAL SELECCIONADO')).toBeInTheDocument()
+    expect(screen.getByLabelText('URL del catálogo')).toHaveTextContent('?restaurante=1&origen=mapa')
+    await user.click(screen.getByRole('button', { name: 'Adelante' }))
+    expect(screen.getByLabelText('Buscar restaurantes')).toBeInTheDocument()
+  })
+
   it('muestra datos reales y omite valoración y entrega desconocidas', async () => {
     mount('/restaurantes')
     expect(await screen.findByRole('link', { name: 'Verde Bowl' })).toHaveAttribute('href', '/restaurantes/1')
@@ -220,14 +275,12 @@ describe('Catálogo y acceso al menú', () => {
     expect(await screen.findByRole('heading', { name: 'Otro local' })).toBeInTheDocument()
     expect(screen.getByText('Tu carrito está vacío.')).toBeInTheDocument()
   })
-  it('protege también el checkout y muestra su estado pendiente', async () => {
+  it('protege también el checkout y muestra el carrito vacío', async () => {
     const user = mount('/checkout')
     await user.type(screen.getByLabelText('Correo electrónico'), 'lucia@mail.com')
     await user.type(screen.getByLabelText('Contraseña'), 'verde2026bici')
     await user.click(screen.getByRole('button', { name: 'Ingresar' }))
-    expect(
-      await screen.findByRole('heading', { name: 'Checkout pendiente de integración' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Tu pedido empieza acá' })).toBeInTheDocument()
   })
   it('redirige la ruta antigua al catálogo público', async () => {
     mount('/panel')

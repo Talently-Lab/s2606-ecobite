@@ -8,7 +8,7 @@ export function CatalogLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-8 sm:px-6">{children}</main>
+      <main className="catalog-main mx-auto w-full flex-1 space-y-6">{children}</main>
       <SiteFooter />
     </div>
   )
@@ -17,11 +17,22 @@ export function CatalogLayout({ children }: { children: ReactNode }) {
 export function FoodImage({ src, alt }: { src: string | null; alt: string }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   return (
-    <div className="flex h-40 items-center justify-center overflow-hidden rounded-xl bg-niebla">
+    <div className="food-image">
       {src && src !== failedSrc ? (
-        <img src={src} alt={alt} className="h-full w-full object-cover" onError={() => setFailedSrc(src)} />
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          width="640"
+          height="420"
+          className="h-full w-full object-cover"
+          onError={() => setFailedSrc(src)}
+        />
       ) : (
-        <Utensils aria-label="Sin fotografía disponible" className="size-10 text-bosque" />
+        <div className="food-placeholder">
+          <Utensils aria-label="Sin fotografía disponible" className="size-10" />
+          <span>BUENA COMIDA, POR DESCUBRIR</span>
+        </div>
       )}
     </div>
   )

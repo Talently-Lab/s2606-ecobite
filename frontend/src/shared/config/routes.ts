@@ -16,3 +16,5 @@ export const ROUTES = {
 
 export const restaurantMenuUrl = (id: number) => `${ROUTES.restaurants}/${id}`
 export const orderConfirmationUrl = (id: number) => `/pedidos/${id}/confirmacion`
+
+export const selectedRestaurantUrl = (id: number) => `${ROUTES.restaurants}?restaurante=${id}`

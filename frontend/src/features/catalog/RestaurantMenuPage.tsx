@@ -92,7 +92,7 @@ function RestaurantMenuContent({ id }: { id: string }) {
       ) : null}
       {data && (
         <>
-          <section className="space-y-3 rounded-2xl bg-white p-6">
+          <section className="menu-banner space-y-3">
             <FoodImage src={data.restaurant.imageUrl} alt={data.restaurant.name} />
             <p className="text-sm text-musgo">Menú del restaurante</p>
             <h1 className="font-display text-3xl font-semibold">{data.restaurant.name}</h1>
@@ -134,9 +134,9 @@ function RestaurantMenuContent({ id }: { id: string }) {
                 <p role="status">No hay platos que coincidan con tu búsqueda.</p>
               ) : (
                 filtered.map((dish) => (
-                  <article key={dish.id} className="space-y-3 rounded-2xl border border-borde bg-white p-5">
+                  <article key={dish.id} className="dish-card">
                     <h2 className="text-xl font-semibold">{dish.name}</h2>
-                    {dish.imageUrl && <FoodImage src={dish.imageUrl} alt={dish.name} />}
+                    <FoodImage src={dish.imageUrl} alt={dish.name} />
                     {dish.category && <p className="text-musgo">{dish.category}</p>}
                     <p>{formatPrice(dish.price)}</p>
                     <Button
@@ -150,10 +150,7 @@ function RestaurantMenuContent({ id }: { id: string }) {
                 ))
               )}
             </section>
-            <aside
-              aria-label="Carrito"
-              className="space-y-4 rounded-2xl border border-borde bg-white p-5 lg:sticky lg:top-4"
-            >
+            <aside aria-label="Carrito" className="order-summary space-y-4 lg:sticky lg:top-4">
               <h2 className="flex items-center gap-2 font-display text-xl font-semibold">
                 <ShoppingCart className="size-5" aria-hidden="true" />
                 Tu pedido

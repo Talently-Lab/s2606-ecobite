@@ -1,3 +1,6 @@
+/* Declare layer order before route styles, including when this CSS loads first. */
+@layer theme, base, components, utilities;
+
 @reference '../../shared/styles/index.css';
 
 @layer components {
@@ -40,5 +43,247 @@
 @media (prefers-reduced-motion: no-preference) {
   .info-faq summary svg {
     transition: transform 180ms ease;
+  }
+}
+
+.methodology-container {
+  width: min(100%, 1200px);
+  margin-inline: auto;
+  padding: 64px 40px 80px;
+}
+.methodology-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 64px;
+  align-items: center;
+}
+.methodology-heading {
+  max-width: 600px;
+}
+.methodology-icon,
+.methodology-step-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #2d6542;
+  background: #e3ece0;
+  border-radius: 16px;
+}
+.methodology-icon {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 24px;
+}
+.methodology-heading h1 {
+  font-family: var(--font-sans);
+  font-size: clamp(36px, 4vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+  color: #24402a;
+  margin: 0;
+}
+.methodology-heading > p {
+  font-size: 18px;
+  line-height: 1.75;
+  color: #5a6b5e;
+  margin-top: 24px;
+  max-width: 530px;
+}
+.methodology-formula {
+  padding: 30px;
+  background: #24402a;
+  color: #f7f5ef;
+  border-radius: 28px;
+}
+.methodology-formula-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.methodology-formula-heading svg {
+  color: #bbdb9b;
+  flex-shrink: 0;
+}
+.methodology-formula h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.methodology-formula ol {
+  list-style: none;
+  padding: 0;
+  margin: 26px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.methodology-formula li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  line-height: 1.55;
+  font-size: 16px;
+}
+.methodology-formula li > span {
+  display: inline-flex;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 25px;
+  color: #bbdb9b;
+  font-size: 15px;
+}
+.methodology-formula-result {
+  border-top: 1px solid #f7f5ef30;
+  padding-top: 20px;
+  font-weight: 600;
+}
+.methodology-formula > p {
+  color: #e3ece0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.methodology-explanation {
+  margin-top: 64px;
+}
+.methodology-explanation > h2 {
+  font-family: var(--font-sans);
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #24402a;
+  margin-bottom: 24px;
+}
+.methodology-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.methodology-step {
+  padding: 28px;
+  border: 1px solid #e2e5dd;
+  border-radius: 24px;
+  background: #fffdf7;
+}
+.methodology-step-icon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 20px;
+}
+.methodology-step h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #24402a;
+  margin-bottom: 12px;
+}
+.methodology-step p,
+.methodology-note p,
+.methodology-details p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #5a6b5e;
+}
+.methodology-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 32px;
+  padding: 24px 28px;
+  border: 1px solid #24402a15;
+  border-radius: 20px;
+  background: #e8eddf;
+}
+.methodology-note > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: #2d6542;
+}
+.methodology-note h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #24402a;
+  margin-bottom: 6px;
+}
+.methodology-details {
+  margin-top: 24px;
+  border: 1px solid #e2e5dd;
+  border-radius: 20px;
+  background: #fffdf7;
+}
+.methodology-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  list-style: none;
+  min-height: 72px;
+  padding: 20px 28px;
+  font-weight: 600;
+  color: #24402a;
+  cursor: pointer;
+}
+.methodology-details summary::-webkit-details-marker {
+  display: none;
+}
+.methodology-details summary svg {
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+.methodology-details[open] summary svg {
+  transform: rotate(180deg);
+}
+.methodology-details > div {
+  padding: 0 28px 24px;
+}
+.methodology-details p + p {
+  margin-top: 12px;
+}
+.methodology-actions {
+  margin-top: 32px;
+}
+@media (max-width: 900px) {
+  .methodology-container {
+    padding: 48px 24px 64px;
+  }
+  .methodology-intro {
+    gap: 32px;
+  }
+  .methodology-formula {
+    padding: 26px;
+  }
+  .methodology-steps {
+    gap: 16px;
+  }
+  .methodology-step {
+    padding: 22px;
+  }
+}
+@media (max-width: 700px) {
+  .methodology-container {
+    padding: 36px 20px 48px;
+  }
+  .methodology-intro {
+    grid-template-columns: 1fr;
+  }
+  .methodology-heading > p {
+    font-size: 16px;
+  }
+  .methodology-explanation {
+    margin-top: 40px;
+  }
+  .methodology-steps {
+    grid-template-columns: 1fr;
+  }
+  .methodology-note {
+    padding: 22px;
+  }
+  .methodology-details summary {
+    padding: 20px 22px;
+  }
+  .methodology-details > div {
+    padding: 0 22px 22px;
+  }
+  .methodology-actions .eco-button {
+    width: 100%;
   }
 }

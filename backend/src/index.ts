@@ -13,6 +13,8 @@ import swaggerUi from "swagger-ui-express";
 import { getCurrentInvoke } from "@codegenie/serverless-express";
 import { swaggerSpec } from "./config/swagger";
 import { errorMiddleware } from "./middlewares/error.middleware";
+import ratingsRoutes from "./routes/ratings.routes";
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -59,6 +61,7 @@ app.use("/api-docs", swaggerUi.serveWithOptions({ redirect: false }));
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
 app.use("/api/restaurantes", catalogRoutes);
+app.use("/api/restaurantes", ratingsRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/pedidos", orderRoutes);
 app.use("/api/admin", adminRoutes);

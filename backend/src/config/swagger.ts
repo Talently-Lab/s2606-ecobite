@@ -223,6 +223,99 @@ const options: swaggerJsdoc.Options = {
           },
           required: ["message", "data"],
         },
+                RestaurantRating: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 12 },
+            score: {
+              type: "integer",
+              minimum: 1,
+              maximum: 5,
+              example: 5,
+            },
+            comment: {
+              type: "string",
+              nullable: true,
+              example: "Excelente comida y atención",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              example: "2026-10-31T18:30:00.000Z",
+            },
+          },
+          required: ["id", "score", "comment", "createdAt"],
+        },
+        RestaurantRatingsData: {
+          type: "object",
+          properties: {
+            averageScore: {
+              type: "number",
+              example: 4.5,
+              description: "Promedio de puntuaciones redondeado a dos decimales.",
+            },
+            totalRatings: {
+              type: "integer",
+              example: 10,
+            },
+            ratings: {
+              type: "array",
+              items: { $ref: "#/components/schemas/RestaurantRating" },
+            },
+          },
+          required: ["averageScore", "totalRatings", "ratings"],
+        },
+        RestaurantRatingRequest: {
+          type: "object",
+          properties: {
+            score: {
+              type: "integer",
+              minimum: 1,
+              maximum: 5,
+              example: 5,
+            },
+            comment: {
+              type: "string",
+              nullable: true,
+              example: "Excelente comida y atención",
+            },
+          },
+          required: ["score"],
+        },
+        RestaurantRatingsResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Valoraciones obtenidas correctamente",
+            },
+            data: {
+              $ref: "#/components/schemas/RestaurantRatingsData",
+            },
+          },
+          required: ["message", "data"],
+        },
+        RestaurantRatingMutationResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              example: "Valoración creada correctamente",
+            },
+            data: {
+              $ref: "#/components/schemas/RestaurantRating",
+            },
+          },
+          required: ["message", "data"],
+        },
+        RatingMutationErrorResponse: {
+          type: "object",
+          properties: {
+            message: { type: "string", example: "La puntuación no es válida" },
+            code: { type: "string", example: "INVALID_RATING_SCORE" },
+          },
+          required: ["message", "code"],
+        },
         OrderConfirmationItem: {
           type: "object",
           properties: {
@@ -599,6 +692,228 @@ const options: swaggerJsdoc.Options = {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+            "/api/restaurantes/{id}/valoraciones": {
+        get: {
+          tags: ["Catálogo y Perfil"],
+          summary: "Obtener las valoraciones de un restaurante",
+          description:
+            "Devuelve el promedio, la cantidad y el listado de valoraciones. No requiere autenticación.",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+              description: "Identificador entero positivo del restaurante.",
+              example: 1,
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Valoraciones obtenidas correctamente",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RestaurantRatingsResponse",
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Identificador de restaurante inválido",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "404": {
+              description: "Restaurante no encontrado",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          tags: ["Catálogo y Perfil"],
+          summary: "Crear una valoración para un restaurante",
+          description:
+            "Requiere JWT y rol cliente. El cliente debe tener al menos un pedido completado en el restaurante. Solo permite una valoración por cliente y restaurante.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+              example: 1,
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/RestaurantRatingRequest",
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Valoración creada correctamente",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RestaurantRatingMutationResponse",
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Datos de valoración o identificador inválidos",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                      { $ref: "#/components/schemas/RatingMutationErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente, inválido o usuario no válido",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/ErrorResponse",
+                  },
+                },
+              },
+            },
+            "403": {
+              description:
+                "El usuario no tiene rol cliente o no cuenta con un pedido completado en el restaurante",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                      { $ref: "#/components/schemas/RatingMutationErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+            "404": {
+              description: "Restaurante no encontrado",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RatingMutationErrorResponse",
+                  },
+                },
+              },
+            },
+            "409": {
+              description: "El cliente ya tiene una valoración para este restaurante",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RatingMutationErrorResponse",
+                  },
+                },
+              },
+            },
+          },
+        },
+        put: {
+          tags: ["Catálogo y Perfil"],
+          summary: "Actualizar la valoración de un restaurante",
+          description:
+            "Requiere JWT y rol cliente. Actualiza la valoración que el cliente autenticado ya registró para el restaurante. Si se omite el comentario, se conserva el anterior; si se envía null o vacío, se elimina.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+              example: 1,
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/RestaurantRatingRequest",
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Valoración actualizada correctamente",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RestaurantRatingMutationResponse",
+                  },
+                },
+              },
+            },
+            "400": {
+              description: "Datos de valoración o identificador inválidos",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/ErrorResponse" },
+                      { $ref: "#/components/schemas/RatingMutationErrorResponse" },
+                    ],
+                  },
+                },
+              },
+            },
+            "401": {
+              description: "Token ausente, inválido o usuario no válido",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/ErrorResponse",
+                  },
+                },
+              },
+            },
+            "403": {
+              description: "El usuario autenticado no tiene rol cliente",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/ErrorResponse",
+                  },
+                },
+              },
+            },
+            "404": {
+              description: "No existe una valoración del cliente para este restaurante",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RatingMutationErrorResponse",
+                  },
                 },
               },
             },

@@ -31,6 +31,44 @@ const clasificarPlatillo = (nombre: string): CategoryInfo | null => {
 const normalizarCategoria = (categoria: string): string =>
   categoria.trim().toLocaleLowerCase("es");
 
+const obtenerResumenValoraciones = async (
+  restaurantIds: number[]
+): Promise<Map<number, { rating: number | null; totalRatings: number }>> => {
+  if (restaurantIds.length === 0) {
+    return new Map();
+  }
+
+  const valoraciones = await prisma.valoraciones.groupBy({
+    by: ["id_restaurante"],
+    where: {
+      id_restaurante: { in: restaurantIds },
+    },
+    _avg: {
+      puntuacion: true,
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  return new Map(
+    valoraciones.map((valoracion: {
+      id_restaurante: number;
+      _avg: { puntuacion: number | null };
+      _count: { _all: number };
+    }) => [
+      valoracion.id_restaurante,
+      {
+        rating:
+          valoracion._avg.puntuacion === null
+            ? null
+            : Number(valoracion._avg.puntuacion.toFixed(1)),
+        totalRatings: valoracion._count._all,
+      },
+    ])
+  );
+};
+
 const mapearRestaurante = (
   restaurante: {
     id_restaurante: number;
@@ -41,6 +79,10 @@ const mapearRestaurante = (
     envase_biodegradable: boolean;
     indicador_eco: string;
     platillos: { nombre: string }[];
+  },
+  valoracion: {
+    rating: number | null;
+    totalRatings: number;
   }
 ): RestaurantCatalogDto => {
   const categorias = [
@@ -62,7 +104,8 @@ const mapearRestaurante = (
       : null,
     category: categorias.length === 1 ? categorias[0] : null,
     estimatedDeliveryMinutes: null,
-    rating: null,
+    rating: valoracion.rating,
+    totalRatings: valoracion.totalRatings,
     latitude: restaurante.latitud?.toNumber() ?? null,
     longitude: restaurante.longitud?.toNumber() ?? null,
   };
@@ -133,31 +176,42 @@ export const getRestaurantCatalog = async (
     ? normalizarCategoria(filters.categoria)
     : undefined;
 
-  return restaurantes
-    .filter((restaurante) => {
-      const nombre = restaurante.nombre.toLocaleLowerCase("es");
-      const direccion = restaurante.direccion.toLocaleLowerCase("es");
+  const restaurantesFiltrados = restaurantes.filter((restaurante) => {
+    const nombre = restaurante.nombre.toLocaleLowerCase("es");
+    const direccion = restaurante.direccion.toLocaleLowerCase("es");
 
-      const coincideBusqueda =
-        !search ||
-        nombre.includes(search) ||
-        direccion.includes(search);
+    const coincideBusqueda =
+      !search ||
+      nombre.includes(search) ||
+      direccion.includes(search);
 
-      const coincideCategoria =
-        !categoria ||
-        restaurante.platillos.some((platillo) => {
-          const categoriaPlatillo = clasificarPlatillo(
-            platillo.nombre
-          )?.name;
+    const coincideCategoria =
+      !categoria ||
+      restaurante.platillos.some((platillo) => {
+        const categoriaPlatillo = clasificarPlatillo(
+          platillo.nombre
+        )?.name;
 
-          return categoriaPlatillo?.toLocaleLowerCase("es") === categoria;
-        });
+        return categoriaPlatillo?.toLocaleLowerCase("es") === categoria;
+      });
 
-      return coincideBusqueda && coincideCategoria;
-    })
-    .map(mapearRestaurante);
+    return coincideBusqueda && coincideCategoria;
+  });
+
+  const resumenes = await obtenerResumenValoraciones(
+    restaurantesFiltrados.map((restaurante) => restaurante.id_restaurante)
+  );
+
+  return restaurantesFiltrados.map((restaurante) =>
+    mapearRestaurante(
+      restaurante,
+      resumenes.get(restaurante.id_restaurante) ?? {
+        rating: null,
+        totalRatings: 0,
+      }
+    )
+  );
 };
-
 export const getRestaurantMenu = async (
   restaurantId: number
 ): Promise<RestaurantMenuDto | null> => {
@@ -201,8 +255,16 @@ export const getRestaurantMenu = async (
     return null;
   }
 
+  const resumenes = await obtenerResumenValoraciones([restaurantId]);
+
   return {
-    restaurant: mapearRestaurante(restaurante),
+    restaurant: mapearRestaurante(
+      restaurante,
+      resumenes.get(restaurantId) ?? {
+        rating: null,
+        totalRatings: 0,
+      }
+    ),
     dishes: restaurante.platillos.map(mapearPlatillo),
   };
 };

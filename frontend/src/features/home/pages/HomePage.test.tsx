@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/features/auth'
+import { AppRoutes } from '@/app/router'
 import type { HomeData } from '../types'
 import { HomePage } from './HomePage'
 
@@ -111,6 +112,21 @@ afterEach(() => {
 })
 
 describe('HomePage', () => {
+  it('carga el inicio bajo demanda desde el router y consulta sus restaurantes', async () => {
+    fetchMock.mockResolvedValue(response({ message: 'Inicio', data }))
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Encontrá dónde comer.' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/home', expect.any(Object))
+  })
+
   it('espera los datos y muestra el mapa ya encuadrado con sus marcadores, sin una ubicación provisional', async () => {
     let resolveHome!: (response: Response) => void
     fetchMock.mockImplementation(

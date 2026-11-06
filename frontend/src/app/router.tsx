@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { GuestRoute, LoginPage, ProtectedRoute, RegisterPage } from '@/features/auth'
 import { MethodologyPage, JoinPage, ContactPage } from '@/features/information'
@@ -15,7 +16,20 @@ import { ROUTES } from '@/shared/config/routes'
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path={ROUTES.home} element={<HomePage />} />
+      <Route
+        path={ROUTES.home}
+        element={
+          <Suspense
+            fallback={
+              <p role="status" className="p-8 text-center text-musgo">
+                Cargando inicio…
+              </p>
+            }
+          >
+            <HomePage />
+          </Suspense>
+        }
+      />
       <Route path={ROUTES.methodology} element={<MethodologyPage />} />
       <Route path={ROUTES.join} element={<JoinPage />} />
       <Route path={ROUTES.contact} element={<ContactPage />} />

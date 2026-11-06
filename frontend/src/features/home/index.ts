@@ -1,3 +1,5 @@
+import { lazy } from 'react'
+
 export type { Restaurant, FeaturedDish } from './types'
-export { HomePage } from './pages/HomePage'
+export const HomePage = lazy(() => import('./pages/HomePage').then(({ HomePage }) => ({ default: HomePage })))
 export { useHome } from './hooks/useHome'

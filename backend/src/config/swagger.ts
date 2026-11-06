@@ -1343,6 +1343,359 @@ const options: swaggerJsdoc.Options = {
           },
         },
       },
+      "/api/admin/restaurantes": {
+        get: {
+          tags: ["Administración"],
+          summary: "Listar restaurantes",
+          description: "Obtiene todos los restaurantes. Requiere autenticación con rol admin.",
+          security: [{ bearerAuth: [] }],
+          responses: {
+            "200": {
+              description: "Restaurantes obtenidos correctamente",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      message: { type: "string" },
+                      data: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            id: { type: "integer", example: 1 },
+                            ownerId: { type: "integer", example: 5 },
+                            name: { type: "string", example: "Verde Bowl" },
+                            address: { type: "string", example: "Thames 1420, Palermo" },
+                            latitude: { type: "number", nullable: true, example: -34.5897 },
+                            longitude: { type: "number", nullable: true, example: -58.4276 },
+                            biodegradablePackaging: { type: "boolean", example: true },
+                            ecoIndicator: { type: "string", example: "A" },
+                            active: { type: "boolean", example: true },
+                          },
+                          required: [
+                            "id", "ownerId", "name", "address", "latitude",
+                            "longitude", "biodegradablePackaging", "ecoIndicator", "active",
+                          ],
+                        },
+                      },
+                    },
+                    required: ["message", "data"],
+                  },
+                },
+              },
+            },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+          },
+        },
+        post: {
+          tags: ["Administración"],
+          summary: "Crear un restaurante",
+          description: "Crea un restaurante y lo deja activo. El propietario debe ser un usuario existente con rol dueno que no tenga otro restaurante asignado.",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id_usuario_owner: { type: "integer", example: 5 },
+                    nombre: { type: "string", example: "Verde Bowl" },
+                    direccion: { type: "string", example: "Thames 1420, Palermo" },
+                    latitud: { type: "number", nullable: true, example: -34.5897 },
+                    longitud: { type: "number", nullable: true, example: -58.4276 },
+                    envase_biodegradable: { type: "boolean", example: true },
+                    indicador_eco: { type: "string", enum: ["A", "B", "C"], example: "A" },
+                  },
+                  required: [
+                    "id_usuario_owner", "nombre", "direccion",
+                    "envase_biodegradable", "indicador_eco",
+                  ],
+                },
+              },
+            },
+          },
+          responses: {
+            "201": { description: "Restaurante creado correctamente" },
+            "400": { description: "Datos inválidos o propietario no válido" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "El usuario propietario no existe" },
+          },
+        },
+      },
+      "/api/admin/restaurantes/{id}": {
+        get: {
+          tags: ["Administración"],
+          summary: "Obtener un restaurante por ID",
+          description: "Obtiene el detalle administrativo de un restaurante.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Restaurante obtenido correctamente",
+            },
+            "400": { description: "El ID del restaurante no es válido" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "El restaurante no existe" },
+          },
+        },
+        put: {
+          tags: ["Administración"],
+          summary: "Actualizar un restaurante",
+          description: "Actualiza los datos permitidos de un restaurante. No modifica directamente su estado activo.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id_usuario_owner: { type: "integer", example: 5 },
+                    nombre: { type: "string", example: "Verde Bowl" },
+                    direccion: { type: "string", example: "Thames 1420, Palermo" },
+                    latitud: { type: "number", nullable: true, example: -34.5897 },
+                    longitud: { type: "number", nullable: true, example: -58.4276 },
+                    envase_biodegradable: { type: "boolean", example: true },
+                    indicador_eco: { type: "string", enum: ["A", "B", "C"], example: "B" },
+                  },
+                  minProperties: 1,
+                  additionalProperties: false,
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Restaurante actualizado correctamente" },
+            "400": { description: "Datos inválidos o propietario no válido" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "Restaurante o usuario propietario no encontrado" },
+          },
+        },
+      },
+      "/api/admin/restaurantes/{id}/estado": {
+        patch: {
+          tags: ["Administración"],
+          summary: "Cambiar el estado de un restaurante",
+          description: "Activa o desactiva un restaurante. Al desactivarlo, también desactiva todos sus platillos. Al reactivarlo, los platillos permanecen desactivados.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    activo: { type: "boolean", example: false },
+                  },
+                  required: ["activo"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Estado del restaurante actualizado correctamente" },
+            "400": { description: "ID o estado del restaurante inválido" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "El restaurante no existe" },
+          },
+        },
+      },
+      "/api/admin/platillos": {
+        get: {
+          tags: ["Administración"],
+          summary: "Listar platillos",
+          description: "Obtiene el listado administrativo de platillos, incluidos los que están desactivados.",
+          security: [{ bearerAuth: [] }],
+          responses: {
+            "200": {
+              description: "Listado de platillos obtenido correctamente",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "integer", example: 1 },
+                        restaurantId: { type: "integer", example: 2 },
+                        name: { type: "string", example: "Bowl de quinoa" },
+                        price: { type: "number", example: 4500 },
+                        co2SavedPerUnit: { type: "number", example: 0.05 },
+                        available: { type: "boolean", example: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+          },
+        },
+        post: {
+          tags: ["Administración"],
+          summary: "Crear un platillo",
+          description: "Crea un platillo disponible asociado a un restaurante existente y activo.",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id_restaurante: { type: "integer", example: 2 },
+                    nombre: { type: "string", maxLength: 100, example: "Bowl de quinoa" },
+                    precio: { type: "number", exclusiveMinimum: 0, example: 4500 },
+                    co2_ahorrado_unit: { type: "number", minimum: 0, example: 0.05 },
+                  },
+                  required: ["id_restaurante", "nombre", "precio", "co2_ahorrado_unit"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          },
+          responses: {
+            "201": { description: "Platillo creado correctamente" },
+            "400": { description: "Datos inválidos o restaurante inactivo" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "El restaurante no existe" },
+          },
+        },
+      },
+      "/api/admin/platillos/{id}": {
+        get: {
+          tags: ["Administración"],
+          summary: "Obtener un platillo por ID",
+          description: "Obtiene el detalle administrativo de un platillo, esté disponible o no.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          responses: {
+            "200": { description: "Platillo obtenido correctamente" },
+            "400": { description: "El ID del platillo no es válido" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "El platillo no existe" },
+          },
+        },
+        put: {
+          tags: ["Administración"],
+          summary: "Actualizar un platillo",
+          description: "Actualiza los datos permitidos de un platillo. No modifica directamente su disponibilidad. El restaurante asignado debe estar activo.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "integer", minimum: 1 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id_restaurante: { type: "integer", example: 2 },
+                    nombre: { type: "string", maxLength: 100, example: "Bowl de quinoa" },
+                    precio: { type: "number", exclusiveMinimum: 0, example: 4500 },
+                    co2_ahorrado_unit: { type: "number", minimum: 0, example: 0.05 },
+                  },
+                  minProperties: 1,
+                  additionalProperties: false,
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Platillo actualizado correctamente" },
+            "400": { description: "Datos inválidos o restaurante inactivo" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "Platillo o restaurante no encontrado" },
+          },
+        },
+      },
+      "/api/admin/platillos/{id}/estado": {
+        patch: {
+          tags: ["Administración"],
+          summary: "Activar o desactivar un platillo",
+          description: "Actualiza la disponibilidad de un platillo. Para reactivarlo, el restaurante asociado debe estar activo.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              in: "path",
+              name: "id",
+              required: true,
+              schema: { type: "integer" },
+              description: "ID del platillo",
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["disponible"],
+                  properties: {
+                    disponible: { type: "boolean", example: true },
+                  },
+                  additionalProperties: false,
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Disponibilidad actualizada correctamente" },
+            "400": { description: "Estado inválido o restaurante inactivo" },
+            "401": { description: "Token ausente o inválido" },
+            "403": { description: "El usuario autenticado no tiene rol admin" },
+            "404": { description: "Platillo o restaurante no encontrado" },
+          },
+        },
+      },
       "/api/admin/dashboard": {
         get: {
           tags: ["Administración"],

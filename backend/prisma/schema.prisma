@@ -82,18 +82,19 @@ model platillos {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model restaurantes {
-  id_restaurante       Int         @id @default(autoincrement())
-  id_usuario_owner     Int         @unique
-  nombre               String      @db.VarChar(120)
+  id_restaurante       Int            @id @default(autoincrement())
+  id_usuario_owner     Int            @unique
+  nombre               String         @db.VarChar(120)
   direccion            String
-  latitud              Decimal?    @db.Decimal(9,6)
-  longitud             Decimal?    @db.Decimal(9,6)
+  latitud              Decimal?       @db.Decimal(9, 6)
+  longitud             Decimal?       @db.Decimal(9, 6)
   envase_biodegradable Boolean
-  indicador_eco        String      @db.VarChar(50)
+  indicador_eco        String         @db.VarChar(50)
   activo               Boolean
   pedidos              pedidos[]
   platillos            platillos[]
-  usuarios             usuarios    @relation(fields: [id_usuario_owner], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+  valoraciones         valoraciones[]
+  usuarios             usuarios       @relation(fields: [id_usuario_owner], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -106,7 +107,23 @@ model usuarios {
   fecha_registro   DateTime           @db.Timestamptz(6)
   metricas_impacto metricas_impacto[]
   pedidos          pedidos[]
+  valoraciones     valoraciones[]
   restaurantes     restaurantes?
+}
+
+model valoraciones {
+  id_valoracion    Int      @id @default(autoincrement())
+  id_usuario       Int
+  id_restaurante   Int
+  puntuacion       Int
+  comentario       String?
+  fecha_valoracion DateTime @default(now()) @db.Timestamptz(6)
+
+  restaurantes restaurantes @relation(fields: [id_restaurante], references: [id_restaurante], onDelete: NoAction, onUpdate: NoAction)
+  usuarios     usuarios     @relation(fields: [id_usuario], references: [id_usuario], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([id_usuario, id_restaurante])
+  @@index([id_restaurante])
 }
 
 enum rol_usuario {

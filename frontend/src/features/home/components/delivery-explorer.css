@@ -1,0 +1,52 @@
+.delivery-pin {
+  display: grid;
+  place-items: center;
+}
+.delivery-pin span {
+  width: 22px;
+  height: 22px;
+  background: #2563a6;
+  border: 4px solid white;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px #2563a6,
+    0 3px 12px #24402a55;
+}
+.delivery-estimate {
+  border-top: 1px solid #24402a30;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+.delivery-estimate button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #24402a55;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #16492f;
+  background: transparent;
+}
+.delivery-estimate button:focus-visible,
+.delivery-estimate summary:focus-visible {
+  outline: 3px solid #b76a39;
+  outline-offset: 2px;
+}
+.delivery-estimate summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.delivery-estimate [role='alert'] {
+  color: #9b3422;
+}
+.delivery-estimate small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.restaurant-popup .leaflet-popup-content {
+  max-height: min(55svh, 420px);
+  overflow-y: auto;
+}

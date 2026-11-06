@@ -5,6 +5,9 @@ import { MapContainer, Marker, TileLayer, Popup, ZoomControl, useMap } from 'rea
 import { ArrowUpRight, LoaderCircle, MapPin } from 'lucide-react'
 import { Alert } from '@/shared/components/ui'
 import { ROUTES, selectedRestaurantUrl } from '@/shared/config/routes'
+import { DeliveryExplorer } from './DeliveryExplorer'
+import { useDeliveryEstimate } from '../services/useDeliveryEstimate'
+import { calculateEstimatedBikeSavings } from '../services/routeService'
 import type { Restaurant } from '../types'
 import 'leaflet/dist/leaflet.css'
 
@@ -115,6 +118,9 @@ export function RestaurantMap({ restaurants, loading, error }: RestaurantMapProp
 }
 
 function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
+  const [selection, setSelection] = useState<{ id: number } | null>(null)
+  const selected = restaurants.find((restaurant) => restaurant.id === selection?.id)
+  const delivery = useDeliveryEstimate(selection, selected)
   const [prepared, setPrepared] = useState(false)
   const [tileError, setTileError] = useState(false)
   const bounds = useMemo(
@@ -148,6 +154,7 @@ function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
               title={`Información de ${restaurant.name}`}
               alt={`Información de ${restaurant.name}`}
               eventHandlers={{
+                popupopen: () => setSelection({ id: restaurant.id }),
                 keydown: (event) => {
                   if (event.originalEvent.key === ' ' || event.originalEvent.key === 'Enter') {
                     event.originalEvent.preventDefault()
@@ -169,6 +176,60 @@ function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
                   <p>{restaurant.address}</p>
                   <p>Indicador ecológico: {restaurant.ecoIndicator}</p>
                   {restaurant.biodegradablePackaging && <p className="eco-tag">Envase biodegradable</p>}
+                  {selection?.id === restaurant.id && (
+                    <div className="delivery-estimate" aria-live="polite">
+                      {delivery.error ? (
+                        <>
+                          <p role="alert">{delivery.error}</p>
+                          <button type="button" onClick={delivery.retry}>
+                            {delivery.destination ? 'Reintentar ruta' : 'Permitir ubicación'}
+                          </button>
+                          {!delivery.destination && (
+                            <small>
+                              Si el navegador bloqueó el permiso, habilitá «Ubicación» desde el icono junto a
+                              la dirección y volvé a intentarlo.
+                            </small>
+                          )}
+                        </>
+                      ) : !delivery.route ? (
+                        <p role="status">
+                          {delivery.destination ? 'Calculando ruta…' : 'Esperando permiso de ubicación…'}
+                        </p>
+                      ) : (
+                        <>
+                          <p>
+                            Distancia por calles:{' '}
+                            <strong>
+                              {delivery.route.distanceKm.toLocaleString('es-AR', {
+                                maximumFractionDigits: 1,
+                              })}{' '}
+                              km
+                            </strong>
+                          </p>
+                          <p>
+                            Ahorro potencial:{' '}
+                            <strong>
+                              {calculateEstimatedBikeSavings(delivery.route.distanceKm).toLocaleString(
+                                'es-AR',
+                                { maximumFractionDigits: 2 },
+                              )}{' '}
+                              kg de CO₂
+                            </strong>
+                          </p>
+                          <details>
+                            <summary>Cómo se calcula</summary>
+                            <small>
+                              Distancia × 180 g CO₂/km ÷ 1000. Comparación provisional entre auto y bici, solo
+                              emisiones directas. Ruta de referencia para auto; no confirma cobertura ni
+                              tiempo de delivery. No se suma a Mi impacto.
+                            </small>
+                            <Link to={ROUTES.methodology}>Ver metodología</Link>
+                          </details>
+                        </>
+                      )}
+                      <small>La ruta se calcula con OSRM usando tu ubicación y la del local.</small>
+                    </div>
+                  )}
                   <Link
                     className="eco-button"
                     to={selectedRestaurantUrl(restaurant.id)}
@@ -180,6 +241,7 @@ function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
               </Popup>
             </Marker>
           ))}
+          <DeliveryExplorer destination={delivery.destination} route={delivery.route} />
           <MapViewport restaurants={restaurants} onReady={setPrepared} />
         </MapContainer>
       </div>

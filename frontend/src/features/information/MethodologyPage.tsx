@@ -93,6 +93,12 @@ export function MethodologyPage() {
               En el carrito, la estimación se calcula con el CO₂ por unidad de cada plato. Los factores de
               emisión del proyecto son provisionales.
             </p>
+            <p>
+              En el mapa, podés simular el traslado hasta tu destino: usamos una distancia de referencia por
+              calles con perfil de auto y un factor provisional de 180 g CO₂/km frente a 0 g/km de emisiones
+              directas en bici. No es una ruta ciclista, una confirmación de cobertura ni un tiempo de
+              entrega. Esta simulación no se suma a Mi impacto ni modifica tu pedido.
+            </p>
           </div>
         </details>
         <div className="methodology-actions">

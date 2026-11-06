@@ -7,9 +7,6 @@ settings:
 importers:
   .:
     dependencies:
-      '@gsap/react':
-        specifier: ^2.1.2
-        version: 2.1.2(gsap@3.15.0)(react@19.3.1)
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.4(@types/node@26.6.5)(esbuild@0.27.0)(jiti@2.7.0)(tsx@4.21.0))
@@ -708,15 +705,6 @@ packages:
         integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==,
       }
     engines: { node: '>=14' }
-
-  '@gsap/react@2.1.2':
-    resolution:
-      {
-        integrity: sha512-JqliybO1837UcgH2hVOM4VO+38APk3ECNrsuSM4MuXp+rbf+/2IG2K1YJiqfTcXQHH7XlA0m3ykniFYstfq0Iw==,
-      }
-    peerDependencies:
-      gsap: ^3.12.5
-      react: '>=17'
 
   '@humanfs/core@0.19.2':
     resolution:
@@ -5639,11 +5627,6 @@ snapshots:
   '@exodus/bytes@1.16.0': {}
 
   '@fastify/busboy@2.1.1': {}
-
-  '@gsap/react@2.1.2(gsap@3.15.0)(react@19.3.1)':
-    dependencies:
-      gsap: 3.15.0
-      react: 19.3.1
 
   '@humanfs/core@0.19.2':
     dependencies:

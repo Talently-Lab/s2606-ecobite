@@ -24,26 +24,6 @@
   .info-page summary {
     @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bosque;
   }
-  .info-faq {
-    @apply border-b border-borde py-5;
-  }
-  .info-faq summary {
-    @apply flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-medium;
-  }
-  .info-faq summary::-webkit-details-marker {
-    display: none;
-  }
-  .info-faq[open] summary svg {
-    transform: rotate(45deg);
-  }
-  .info-faq p {
-    @apply max-w-2xl pt-3 pb-2 text-sm leading-7 text-musgo;
-  }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .info-faq summary svg {
-    transition: transform 180ms ease;
-  }
 }
 
 .methodology-container {

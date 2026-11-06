@@ -27,6 +27,4 @@ export const authService = {
     const { user } = await request<MeApiResponse>('/auth/me')
     return { usuario: user }
   },
-  // Con JWT sin estado alcanza con borrar el token.
-  logout: () => {},
 }

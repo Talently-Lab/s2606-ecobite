@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: (payload: LoginPayload) => authService.login(payload).then(startSession),
       register: (payload: RegisterPayload) => authService.register(payload).then(startSession),
       logout: () => {
-        authService.logout()
         setToken(null)
         setUsuario(null)
       },

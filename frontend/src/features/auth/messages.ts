@@ -11,7 +11,6 @@ export const AUTH_MESSAGES = {
   termsRequired: 'Necesitás aceptar los términos para crear tu cuenta.',
   invalidCredentials: 'El correo o la contraseña no son correctos. Revisalos e intentá de nuevo.',
   registerInvalid: 'Revisá los campos marcados para crear tu cuenta.',
-  sessionExpired: 'Sesión vencida.',
 } as const
 
 /** Ayuda bajo la contraseña según la fuerza (0 a 3). */

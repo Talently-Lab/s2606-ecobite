@@ -173,10 +173,8 @@ describe('HomePage', () => {
     const user = userEvent.setup()
     renderHome()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Encontrá dónde comer.')
-    expect(screen.getAllByRole('link', { name: /Explorar restaurantes/ })).toHaveLength(1)
-    for (const link of screen.getAllByRole('link', { name: /Explorar restaurantes/ })) {
-      expect(link).toHaveAttribute('href', '/restaurantes')
-    }
+    expect(screen.queryByRole('link', { name: /Explorar restaurantes/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Ver restaurantes' })).toHaveAttribute('href', '/restaurantes')
     expect(screen.getByRole('link', { name: 'Explorar el mapa' })).toHaveAttribute('href', '#mapa')
     expect(
@@ -299,6 +297,7 @@ describe('HomePage', () => {
     const user = userEvent.setup()
     renderHome()
     expect(await screen.findByLabelText('Mapa de restaurantes')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mi cuenta' }))
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
     expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
     expect(fetchMock).toHaveBeenLastCalledWith('http://localhost:3000/api/home', {

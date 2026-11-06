@@ -1,99 +1,189 @@
-import { CatalogLayout } from '@/features/catalog'
-import { ArrowLeft, Leaf, LoaderCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { CatalogLayout, formatPrice, refreshCartMenus } from '@/features/catalog'
+import { useAuth } from '@/features/auth'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Alert, Button } from '@/shared/components/ui'
-import { ROUTES } from '@/shared/config/routes'
-import { formatPrice } from '@/features/catalog'
+import {
+  beginConfirmation,
+  cartInputs,
+  finishConfirmation,
+  getOrders,
+  releaseConfirmation,
+  useOrders,
+} from '@/shared/lib/orderDraft'
+import { ApiError } from '@/shared/lib/http'
+import { groupConfirmationUrl, ROUTES, restaurantMenuUrl } from '@/shared/config/routes'
 import { panelService } from '../panelService'
-import type { CheckoutQuote, CheckoutRequest } from '../types'
+import type { GroupQuote } from '../types'
 
 export function CheckoutPage() {
-  const location = useLocation()
   const navigate = useNavigate()
-  const payload = location.state as CheckoutRequest | null
-  const [quote, setQuote] = useState<CheckoutQuote | null>(null)
+  const { logout } = useAuth()
+  const state = useOrders()
+  const inputs = useMemo(() => cartInputs(state), [state])
+  const key = JSON.stringify(inputs)
+  const [result, setResult] = useState<{ key: string; quote?: GroupQuote; error?: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
+  const busy = useRef(false)
+  const [attempt, setAttempt] = useState(0)
+  const current = result?.key === key ? result : null
+  const quote = current?.quote
   useEffect(() => {
-    if (!payload?.restaurantId || !payload.items?.length) return
-    panelService
-      .quote(payload)
-      .then(({ data }) => setQuote(data))
-      .catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : 'No pudimos calcular la cotización.')
+    if (!inputs.length || state.pending) return
+    let active = true
+    void panelService
+      .quoteGroup(inputs)
+      .then(({ data }) => {
+        if (active) setResult({ key, quote: data })
       })
-  }, [payload])
+      .catch((reason: unknown) => {
+        if (active && reason instanceof ApiError && reason.status === 401) {
+          logout({ preserveCart: true })
+          navigate(ROUTES.login, { state: { from: ROUTES.checkout }, replace: true })
+          return
+        }
+        if (active && reason instanceof ApiError && [400, 404].includes(reason.status))
+          void refreshCartMenus(inputs.map((order) => order.restaurantId))
+        if (active)
+          setResult({
+            key,
+            error: reason instanceof Error ? reason.message : 'No pudimos actualizar el carrito.',
+          })
+      })
+    return () => {
+      active = false
+    }
+  }, [inputs, key, attempt, state.pending, logout, navigate])
 
-  if (!payload?.restaurantId || !payload.items?.length) {
-    return (
-      <CatalogLayout>
-        <div className="checkout-shell mx-auto w-full max-w-2xl space-y-5 px-6 py-10">
-          <h1 className="font-display text-3xl font-semibold">Tu pedido empieza acá</h1>
-          <Alert>Tu carrito está vacío. Elegí platos antes de continuar.</Alert>
-          <Link to={ROUTES.restaurants} className="inline-flex min-h-11 items-center gap-2 font-semibold">
-            <ArrowLeft className="size-5" aria-hidden="true" /> Volver a restaurantes
-          </Link>
-        </div>
-      </CatalogLayout>
-    )
-  }
-
-  const confirm = async () => {
+  async function confirm() {
+    if (busy.current || (!quote && !state.pending)) return
+    busy.current = true
     setSubmitting(true)
     setError(null)
+    const pending = state.pending ?? beginConfirmation(Math.round(quote!.subtotal * 100))
     try {
-      const { data } = await panelService.createOrder(payload)
-      navigate(`/pedidos/${data.order.id}/confirmacion`, { replace: true })
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : 'No pudimos confirmar el pedido.')
+      const { data } = await panelService.createGroup(pending)
+      if (getOrders().pending?.key !== pending.key) return
+      finishConfirmation()
+      navigate(groupConfirmationUrl(data.groupId), { replace: true })
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status >= 400 && reason.status < 500) {
+        releaseConfirmation()
+        if (reason.status === 401) {
+          logout({ preserveCart: true })
+          navigate(ROUTES.login, { state: { from: ROUTES.checkout }, replace: true })
+          return
+        }
+        setResult(null)
+        setAttempt((value) => value + 1)
+      }
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'No recibimos la confirmación. Recuperá el resultado sin volver a armar el carrito.',
+      )
+    } finally {
+      busy.current = false
       setSubmitting(false)
     }
   }
 
   return (
     <CatalogLayout>
-      <div className="checkout-shell mx-auto w-full max-w-2xl space-y-6 px-6 py-10">
-        <Link to={ROUTES.restaurants} className="inline-flex min-h-11 items-center gap-2">
-          <ArrowLeft className="size-5" aria-hidden="true" /> Volver a restaurantes
+      <div className="checkout-shell mx-auto w-full max-w-3xl space-y-6 px-5 py-10">
+        <Link to={`${ROUTES.restaurants}?carrito=1`} className="inline-flex min-h-11 items-center underline">
+          Volver al carrito
         </Link>
         <div>
           <p className="text-sm text-musgo">Último paso</p>
-          <h1 className="font-display text-3xl font-semibold">Confirmá tu pedido</h1>
+          <h1 className="font-display text-3xl font-semibold">
+            {inputs.length ? 'Revisá todos tus pedidos' : 'Tu pedido empieza acá'}
+          </h1>
         </div>
-        {error && <Alert>{error}</Alert>}
-        {!quote ? (
-          <p role="status" className="flex items-center gap-2 text-musgo">
-            <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> Calculando cotización…
-          </p>
+        {!inputs.length ? (
+          <Alert>Tu carrito está vacío. Elegí platos antes de continuar.</Alert>
         ) : (
-          <section className="space-y-5 rounded-2xl bg-white p-6">
-            <h2 className="font-display text-xl font-semibold">{quote.restaurantName}</h2>
-            {quote.items.map((item) => (
-              <div key={item.dishId} className="flex justify-between gap-4">
-                <span>
-                  {item.quantity} × {item.name}
-                </span>
-                <span>{formatPrice(item.subtotal)}</span>
-              </div>
-            ))}
-            <div className="border-t border-borde pt-4">
-              <p className="flex justify-between font-semibold">
-                <span>Subtotal</span>
-                <span>{formatPrice(quote.subtotal)}</span>
+          <>
+            {!state.storageAvailable && (
+              <Alert>
+                El carrito no podrá recuperarse al recargar esta pestaña. Conservá esta página hasta recibir
+                la confirmación.
+              </Alert>
+            )}
+            {(error || current?.error) && <Alert>{error || current?.error}</Alert>}
+            {state.pending && (
+              <p role="status" className="rounded-xl bg-niebla p-4">
+                Estamos recuperando una confirmación pendiente. Usaremos el mismo identificador para evitar
+                pedidos duplicados.
               </p>
-              {quote.environmentalImpact && (
-                <p className="mt-3 flex items-center gap-2 rounded-xl bg-niebla p-3 text-sm">
-                  <Leaf className="size-5 text-bosque" aria-hidden="true" />
-                  Impacto estimado: {quote.environmentalImpact.co2SavedKg.toLocaleString('es-AR')} kg de CO₂
+            )}
+            {!quote && !state.pending && !current?.error && (
+              <p role="status">Actualizando precios y disponibilidad…</p>
+            )}
+            {current?.error && (
+              <>
+                <Button type="button" onClick={() => setAttempt((value) => value + 1)}>
+                  Reintentar cotización
+                </Button>
+                <p className="text-sm text-musgo">
+                  Si algún plato dejó de estar disponible, volvé al carrito para revisarlo.
                 </p>
-              )}
-            </div>
-            <Button type="button" className="w-full" disabled={submitting} onClick={confirm}>
-              {submitting ? 'Confirmando…' : 'Confirmar pedido'}
-            </Button>
-          </section>
+              </>
+            )}
+            {quote?.groups.map((group) => (
+              <section
+                className="space-y-4 rounded-2xl border border-borde bg-white p-6"
+                key={group.restaurantId}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="font-display text-xl font-semibold">{group.restaurantName}</h2>
+                  <Link
+                    className="min-h-11 inline-flex items-center underline"
+                    to={restaurantMenuUrl(group.restaurantId)}
+                  >
+                    Ver menú
+                  </Link>
+                </div>
+                {group.items.map((item) => (
+                  <div key={item.dishId} className="flex justify-between gap-4">
+                    <span>
+                      {item.quantity} × {item.name}
+                    </span>
+                    <span>{formatPrice(item.subtotal)}</span>
+                  </div>
+                ))}
+                <p className="flex justify-between border-t border-borde pt-3 font-semibold">
+                  <span>Subtotal del restaurante</span>
+                  <span>{formatPrice(group.subtotal)}</span>
+                </p>
+              </section>
+            ))}
+            {(quote || state.pending) && (
+              <section className="space-y-4 rounded-2xl bg-niebla p-6">
+                <p className="flex justify-between gap-4 font-semibold">
+                  <span>Subtotal de productos</span>
+                  <span>
+                    {formatPrice(state.pending ? state.pending.expectedSubtotalCents / 100 : quote!.subtotal)}
+                  </span>
+                </p>
+                <p className="text-sm text-musgo">
+                  El envío no está calculado. Cada restaurante prepara su pedido por separado. Esta es una
+                  simulación; no se realiza un cobro.
+                </p>
+                <Button type="button" className="w-full" disabled={submitting} onClick={() => void confirm()}>
+                  {submitting
+                    ? 'Confirmando…'
+                    : state.pending
+                      ? 'Recuperar confirmación'
+                      : 'Confirmar pedidos'}
+                </Button>
+                <p className="text-sm text-musgo">
+                  Se confirman todos juntos. Si alguno no puede crearse, no se crea ninguno.
+                </p>
+              </section>
+            )}
+          </>
         )}
       </div>
     </CatalogLayout>

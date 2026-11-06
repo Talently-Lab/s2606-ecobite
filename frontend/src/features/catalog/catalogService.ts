@@ -1,5 +1,5 @@
-import { request } from '@/shared/lib/http'
-import type { ApiResult, CatalogRestaurant, RestaurantMenu } from './types'
+import { request, type ApiResult } from '@/shared/lib/http'
+import type { CatalogRestaurant, RestaurantMenu } from './types'
 
 export const catalogService = {
   list: (search: string, categoria: string) => {

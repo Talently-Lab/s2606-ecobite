@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Alert, TextField } from '@/shared/components/ui'
 import { restaurantMenuUrl } from '@/shared/config/routes'
 import { catalogService } from './catalogService'
-import { CatalogLayout, FoodImage, LoadingState, RetryButton } from './components'
+import { CatalogLayout, FoodImage, LoadingState, RetryButton } from './catalogComponents'
 import type { CatalogRestaurant } from './types'
 
 export function RestaurantCatalogPage() {
@@ -14,8 +14,8 @@ export function RestaurantCatalogPage() {
     selected !== null && /^[1-9]\d*$/.test(selected) && Number.isSafeInteger(Number(selected))
       ? Number(selected)
       : null
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
+  const search = params.get('search') ?? ''
+  const category = params.get('categoria') ?? ''
   const [attempt, setAttempt] = useState(0)
   const [result, setResult] = useState<{ key: string; data?: CatalogRestaurant[]; error?: string } | null>(
     null,
@@ -46,10 +46,47 @@ export function RestaurantCatalogPage() {
   }, [requestSearch, requestCategory, attempt, key])
   const current = result?.key === key ? result : null
   const restaurants = current?.data?.filter((restaurant) => selected === null || restaurant.id === selectedId)
+  const rawPage = params.get('pagina')
+  const requestedPage =
+    rawPage && /^[1-9]\d*$/.test(rawPage) && Number.isSafeInteger(Number(rawPage)) ? Number(rawPage) : 1
+  const pages = Math.max(1, Math.ceil((restaurants?.length ?? 0) / 9))
+  const page = selected === null ? Math.min(requestedPage, pages) : 1
+  const visibleRestaurants = restaurants?.slice((page - 1) * 9, page * 9)
+  useEffect(() => {
+    if (!current?.data || rawPage === null || (selected === null && rawPage === String(page))) return
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        if (page === 1) next.delete('pagina')
+        else next.set('pagina', String(page))
+        return next
+      },
+      { replace: true },
+    )
+  }, [current, rawPage, page, selected, setParams])
+  const changeFilter = (field: string, value: string) =>
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        if (value) next.set(field, value)
+        else next.delete(field)
+        next.delete('pagina')
+        return next
+      },
+      { replace: true },
+    )
+  const changePage = (value: number) =>
+    setParams((previous) => {
+      const next = new URLSearchParams(previous)
+      if (value === 1) next.delete('pagina')
+      else next.set('pagina', String(value))
+      return next
+    })
   const clearSelection = () =>
     setParams((previous) => {
       const next = new URLSearchParams(previous)
       next.delete('restaurante')
+      next.delete('pagina')
       return next
     })
   return (
@@ -76,7 +113,7 @@ export function RestaurantCatalogPage() {
               label="Buscar restaurantes"
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => changeFilter('search', event.target.value)}
               placeholder="Nombre o dirección"
             />
           </div>
@@ -85,7 +122,7 @@ export function RestaurantCatalogPage() {
             <select
               className="min-h-12 rounded-xl border border-borde bg-white px-4"
               value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              onChange={(event) => changeFilter('categoria', event.target.value)}
             >
               <option value="">Todas</option>
               {['Bowls', 'Ensaladas', 'Wraps'].map((name) => (
@@ -109,8 +146,8 @@ export function RestaurantCatalogPage() {
             : 'No encontramos restaurantes con estos filtros.'}
         </p>
       )}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {restaurants?.map((restaurant) => (
+      <div className="catalog-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {visibleRestaurants?.map((restaurant) => (
           <article key={restaurant.id} className="catalog-card space-y-3">
             <FoodImage src={restaurant.imageUrl} alt={restaurant.name} />
             <h2 className="font-display text-xl font-semibold">
@@ -142,6 +179,40 @@ export function RestaurantCatalogPage() {
           </article>
         ))}
       </div>
+      {selected === null && restaurants && restaurants.length > 0 && (
+        <div className="space-y-3 pt-4">
+          <p role="status" className="text-sm text-musgo">
+            Mostrando {(page - 1) * 9 + 1}–{Math.min(page * 9, restaurants.length)} de {restaurants.length}{' '}
+            restaurantes
+          </p>
+          {pages > 1 && (
+            <nav
+              aria-label="Paginación de restaurantes"
+              className="flex flex-wrap items-center justify-center gap-4"
+            >
+              <button
+                type="button"
+                className="min-h-11 rounded-xl border border-borde px-4 disabled:opacity-40"
+                disabled={page === 1}
+                onClick={() => changePage(page - 1)}
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">
+                Página {page} de {pages}
+              </span>
+              <button
+                type="button"
+                className="min-h-11 rounded-xl border border-borde px-4 disabled:opacity-40"
+                disabled={page === pages}
+                onClick={() => changePage(page + 1)}
+              >
+                Siguiente
+              </button>
+            </nav>
+          )}
+        </div>
+      )}
     </CatalogLayout>
   )
 }

@@ -7,7 +7,7 @@ export interface AuthContextValue {
   loading: boolean
   login: (payload: LoginPayload) => Promise<Usuario>
   register: (payload: RegisterPayload) => Promise<Usuario>
-  logout: () => void
+  logout: (options?: { preserveCart?: boolean }) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

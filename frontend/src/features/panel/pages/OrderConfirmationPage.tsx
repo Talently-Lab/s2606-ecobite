@@ -8,7 +8,7 @@ import { formatPrice } from '@/features/catalog'
 import { panelService } from '../panelService'
 import type { ConfirmationData } from '../types'
 
-export function ConfirmacionPedido() {
+export function OrderConfirmationPage() {
   const { id } = useParams()
   const orderId = Number(id)
   const [data, setData] = useState<ConfirmationData | null>(null)

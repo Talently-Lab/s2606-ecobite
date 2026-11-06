@@ -5,7 +5,7 @@ import { formatPrice } from '@/features/catalog'
 import { panelService } from '../panelService'
 import type { AdminDashboard } from '../types'
 
-export function PanelAdmin() {
+export function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
 

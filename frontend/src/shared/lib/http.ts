@@ -5,6 +5,11 @@ const TOKEN_KEY = 'ecobite.token'
 
 export type FieldErrors = Record<string, string>
 
+export interface ApiResult<T> {
+  message: string
+  data: T
+}
+
 export class ApiError extends Error {
   readonly status: number
   readonly fields: FieldErrors
@@ -25,6 +30,7 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 interface RequestOptions {
   method?: HttpMethod
   body?: unknown
+  idempotencyKey?: string
 }
 
 interface ErrorBody {
@@ -37,8 +43,12 @@ interface ErrorBody {
   }
 }
 
-export async function request<T>(path: string, { method = 'GET', body }: RequestOptions = {}): Promise<T> {
+export async function request<T>(
+  path: string,
+  { method = 'GET', body, idempotencyKey }: RequestOptions = {},
+): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
 

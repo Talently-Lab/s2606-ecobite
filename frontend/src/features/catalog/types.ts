@@ -14,7 +14,3 @@ export interface RestaurantMenu {
   restaurant: CatalogRestaurant
   dishes: CatalogDish[]
 }
-export interface ApiResult<T> {
-  message: string
-  data: T
-}

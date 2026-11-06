@@ -7,6 +7,7 @@ export const ROUTES = {
   restaurantMenu: '/restaurantes/:id',
   checkout: '/checkout',
   orderConfirmation: '/pedidos/:id/confirmacion',
+  groupConfirmation: '/pedidos/grupos/:id/confirmacion',
   impact: '/impacto',
   admin: '/admin',
   methodology: '/como-calculamos-co2',
@@ -15,6 +16,7 @@ export const ROUTES = {
 } as const
 
 export const restaurantMenuUrl = (id: number) => `${ROUTES.restaurants}/${id}`
-export const orderConfirmationUrl = (id: number) => `/pedidos/${id}/confirmacion`
 
 export const selectedRestaurantUrl = (id: number) => `${ROUTES.restaurants}?restaurante=${id}`
+
+export const groupConfirmationUrl = (id: string) => `/pedidos/grupos/${id}/confirmacion`

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/features/auth'
-import { ImpactoPage } from './ImpactoPage'
+import { ImpactPage } from './ImpactPage'
 
 const fetchMock = vi.fn<typeof fetch>()
 const home = { categories: [], restaurants: [], featuredDishes: [], howItWorks: [] }
@@ -11,7 +11,7 @@ function mount() {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <ImpactoPage />
+        <ImpactPage />
       </AuthProvider>
     </MemoryRouter>,
   )

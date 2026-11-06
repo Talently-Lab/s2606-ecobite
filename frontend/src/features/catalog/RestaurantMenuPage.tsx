@@ -1,47 +1,38 @@
-import { ArrowLeft, Leaf, MapPin, Minus, Plus, ShoppingCart, CreditCard } from 'lucide-react'
+import { ArrowLeft, MapPin, Minus, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '@/features/auth'
-import { ApiError } from '@/shared/lib/http'
+import { Link, useParams } from 'react-router-dom'
 import { Alert, Button, TextField } from '@/shared/components/ui'
+import { useOrders, editDraft, changeDraftQuantity } from '@/shared/lib/orderDraft'
 import { ROUTES } from '@/shared/config/routes'
-import { catalogService } from './catalogService'
-import { CatalogLayout, FoodImage, LoadingState, RetryButton } from './components'
-import { formatPrice } from './format'
+import { loadMenu } from './menuCache'
+import { CatalogLayout, FoodImage, LoadingState, RetryButton } from './catalogComponents'
+import { formatPrice } from './formatPrice'
 import type { RestaurantMenu } from './types'
 
 export function RestaurantMenuPage() {
   const { id } = useParams()
-  const { usuario } = useAuth()
-  // Remount the order when its restaurant or owner changes.
-  return <RestaurantMenuContent key={`${id}:${usuario?.id_usuario}`} id={id ?? ''} />
+  return <RestaurantMenuContent key={id} id={id ?? ''} />
 }
 
 function RestaurantMenuContent({ id }: { id: string }) {
-  const navigate = useNavigate()
+  const orders = useOrders()
+  const draft = orders.drafts[Number(id)]
   const validId = /^\d+$/.test(id) && Number.isSafeInteger(Number(id)) && Number(id) > 0
   const [result, setResult] = useState<{ data?: RestaurantMenu; error?: string } | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
-  const [cart, setCart] = useState<Record<number, number>>({})
+  const search = draft?.search ?? ''
+  const category = draft?.category ?? ''
+  const cart = draft?.items ?? {}
   useEffect(() => {
     if (!validId) return
     let active = true
-    catalogService.menu(Number(id)).then(
-      ({ data }) => {
+    loadMenu(Number(id), attempt > 0).then(
+      (data) => {
         if (active) setResult({ data })
       },
       (error: unknown) => {
         if (active)
-          setResult({
-            error:
-              error instanceof ApiError && error.status === 404
-                ? 'Restaurante no encontrado o inactivo.'
-                : error instanceof Error
-                  ? error.message
-                  : 'No pudimos cargar el menú.',
-          })
+          setResult({ error: error instanceof Error ? error.message : 'No pudimos cargar el menú.' })
       },
     )
     return () => {
@@ -58,18 +49,9 @@ function RestaurantMenuContent({ id }: { id: string }) {
       (!category || dish.category === category) &&
       dish.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')),
   )
-  const items = dishes.filter((dish) => (cart[dish.id] ?? 0) > 0)
-  const count = items.reduce((sum, dish) => sum + (cart[dish.id] ?? 0), 0)
-  const subtotal = items.reduce((sum, dish) => sum + dish.price * (cart[dish.id] ?? 0), 0)
-  const co2 = items.reduce((sum, dish) => sum + dish.co2SavedPerUnit * (cart[dish.id] ?? 0), 0)
-  const changeQty = (dishId: number, delta: number) =>
-    setCart((previous) => {
-      const next = { ...previous }
-      const quantity = Math.max(0, (next[dishId] ?? 0) + delta)
-      if (quantity === 0) delete next[dishId]
-      else next[dishId] = quantity
-      return next
-    })
+  const changeQty = (dishId: number, delta: number) => {
+    if (data) changeDraftQuantity(Number(id), data.restaurant.name, dishId, delta)
+  }
   return (
     <CatalogLayout>
       <Link to={ROUTES.restaurants} className="inline-flex min-h-11 items-center gap-2">
@@ -107,13 +89,15 @@ function RestaurantMenuContent({ id }: { id: string }) {
               <p>Entrega estimada: {data.restaurant.estimatedDeliveryMinutes} min</p>
             )}
           </section>
-          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
             <section aria-label="Platos del restaurante" className="min-w-0 space-y-4">
               <TextField
                 label="Buscar platos"
                 type="search"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) =>
+                  editDraft(Number(id), data.restaurant.name, { search: event.target.value })
+                }
               />
               <div className="flex flex-wrap gap-2" aria-label="Categorías de platos">
                 {['', ...categories].map((name) => (
@@ -121,7 +105,7 @@ function RestaurantMenuContent({ id }: { id: string }) {
                     key={name}
                     type="button"
                     aria-pressed={category === name}
-                    onClick={() => setCategory(name)}
+                    onClick={() => editDraft(Number(id), data.restaurant.name, { category: name })}
                     className={`min-h-11 rounded-full border border-borde px-4 ${category === name ? 'bg-bosque text-white' : 'bg-white'}`}
                   >
                     {name || 'Todos'}
@@ -139,81 +123,40 @@ function RestaurantMenuContent({ id }: { id: string }) {
                     <FoodImage src={dish.imageUrl} alt={dish.name} />
                     {dish.category && <p className="text-musgo">{dish.category}</p>}
                     <p>{formatPrice(dish.price)}</p>
-                    <Button
-                      type="button"
-                      onClick={() => changeQty(dish.id, 1)}
-                      aria-label={`Agregar ${dish.name} al pedido`}
-                    >
-                      <Plus className="size-5" aria-hidden="true" /> Agregar al pedido
-                    </Button>
+                    {(cart[dish.id] ?? 0) > 0 ? (
+                      <div className="quantity-picker" role="group" aria-label={`Cantidad de ${dish.name}`}>
+                        <button
+                          type="button"
+                          disabled={!!orders.pending}
+                          aria-label={`Quitar una unidad de ${dish.name}`}
+                          onClick={() => changeQty(dish.id, -1)}
+                        >
+                          <Minus size={18} aria-hidden="true" />
+                        </button>
+                        <span aria-live="polite">{cart[dish.id]}</span>
+                        <button
+                          type="button"
+                          disabled={!!orders.pending || (cart[dish.id] ?? 0) >= 20}
+                          aria-label={`Agregar una unidad de ${dish.name}`}
+                          onClick={() => changeQty(dish.id, 1)}
+                        >
+                          <Plus size={18} aria-hidden="true" />
+                        </button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        disabled={!!orders.pending}
+                        onClick={() => changeQty(dish.id, 1)}
+                        aria-label={`Agregar ${dish.name} al pedido`}
+                      >
+                        <Plus size={18} aria-hidden="true" /> Agregar al pedido
+                      </Button>
+                    )}
                   </article>
                 ))
               )}
             </section>
-            <aside aria-label="Carrito" className="order-summary space-y-4 lg:sticky lg:top-4">
-              <h2 className="flex items-center gap-2 font-display text-xl font-semibold">
-                <ShoppingCart className="size-5" aria-hidden="true" />
-                Tu pedido
-              </h2>
-              <p role="status" aria-live="polite">
-                {count === 0 ? 'Tu carrito está vacío.' : `${count} unidades en tu carrito`}
-              </p>
-              {items.map((dish) => (
-                <div key={dish.id} className="space-y-2 border-b border-borde pb-4">
-                  <h3 className="font-semibold">{dish.name}</h3>
-                  <p>{formatPrice(dish.price * (cart[dish.id] ?? 0))}</p>
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      className="flex size-11 items-center justify-center rounded-full border border-borde"
-                      aria-label={`Quitar una unidad de ${dish.name}`}
-                      onClick={() => changeQty(dish.id, -1)}
-                    >
-                      <Minus className="size-5" aria-hidden="true" />
-                    </button>
-                    <span aria-label={`Cantidad de ${dish.name}`}>{cart[dish.id]}</span>
-                    <button
-                      type="button"
-                      className="flex size-11 items-center justify-center rounded-full border border-borde"
-                      aria-label={`Agregar una unidad de ${dish.name}`}
-                      onClick={() => changeQty(dish.id, 1)}
-                    >
-                      <Plus className="size-5" aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <p className="flex justify-between font-semibold">
-                <span>Subtotal</span>
-                <span>{formatPrice(subtotal)}</span>
-              </p>
-              <p className="flex items-center gap-2 rounded-xl bg-niebla p-3">
-                <Leaf className="size-5 shrink-0 text-bosque" aria-hidden="true" />
-                CO₂ estimado del pedido: {co2.toLocaleString('es-AR', { maximumFractionDigits: 3 })} kg
-              </p>
-              <p className="text-sm text-musgo">
-                Estimación según los platos seleccionados. No se suma a tu impacto hasta completar un pedido.
-              </p>
-              <Button
-                disabled={count === 0}
-                type="button"
-                className="w-full"
-                onClick={() =>
-                  navigate(ROUTES.checkout, {
-                    state: {
-                      restaurantId: data.restaurant.id,
-                      zone: 'cercana',
-                      items: items.map((dish) => ({ dishId: dish.id, quantity: cart[dish.id] })),
-                    },
-                  })
-                }
-              >
-                <CreditCard className="size-5" aria-hidden="true" /> Ir a pagar
-              </Button>
-              <p className="text-sm text-musgo">
-                El total y el impacto se confirman con los valores persistidos del pedido.
-              </p>
-            </aside>
           </div>
         </>
       )}

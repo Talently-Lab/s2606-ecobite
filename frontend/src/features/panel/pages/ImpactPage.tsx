@@ -5,7 +5,7 @@ import { CatalogLayout, LoadingState } from '@/features/catalog'
 import { Alert } from '@/shared/components/ui'
 import { ROUTES } from '@/shared/config/routes'
 
-export function ImpactoPage() {
+export function ImpactPage() {
   const { data, loading, error } = useHome()
   const co2 = data?.userImpact?.co2SavedKg
   return (

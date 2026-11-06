@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { claimOrderOwner, clearOrders } from '@/shared/lib/orderDraft'
 import { getToken, setToken } from '@/shared/lib/http'
 import { authService } from '../services/authService'
 import type { AuthResponse, LoginPayload, RegisterPayload, Usuario } from '../types'
@@ -9,10 +10,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(() => Boolean(getToken()))
 
   useEffect(() => {
-    if (!getToken()) return
+    if (!getToken()) {
+      return
+    }
     authService
       .me()
-      .then(({ usuario }) => setUsuario(usuario))
+      .then(({ usuario }) => {
+        claimOrderOwner(usuario.id_usuario)
+        setUsuario(usuario)
+      })
       .catch(() => {
         setToken(null)
         setUsuario(null)
@@ -21,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const startSession = useCallback(({ token, usuario }: AuthResponse) => {
+    claimOrderOwner(usuario.id_usuario)
     setToken(token)
     setUsuario(usuario)
     return usuario
@@ -32,7 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login: (payload: LoginPayload) => authService.login(payload).then(startSession),
       register: (payload: RegisterPayload) => authService.register(payload).then(startSession),
-      logout: () => {
+      logout: (options) => {
+        if (!options?.preserveCart) clearOrders()
         setToken(null)
         setUsuario(null)
       },

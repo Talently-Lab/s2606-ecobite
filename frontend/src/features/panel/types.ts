@@ -1,14 +1,3 @@
-export interface CheckoutItemInput {
-  dishId: number
-  quantity: number
-}
-
-export interface CheckoutRequest {
-  restaurantId: number
-  zone: string
-  items: CheckoutItemInput[]
-}
-
 export interface CheckoutQuoteItem {
   dishId: number
   name: string
@@ -79,7 +68,17 @@ export interface AdminDashboard {
   }>
 }
 
-export interface ApiResult<T> {
-  message: string
-  data: T
+export interface GroupQuote {
+  groups: CheckoutQuote[]
+  subtotal: number
+  deliveryFee: null
+  total: null
+}
+export interface GroupConfirmation {
+  groupId: string
+  date: string
+  orders: OrderConfirmation[]
+  subtotal: number
+  environmentalImpact: { co2SavedKg: number }
+  myImpact: MyImpact
 }

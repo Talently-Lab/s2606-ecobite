@@ -1,4 +1,5 @@
 export { CheckoutPage } from './pages/CheckoutPage'
-export { ConfirmacionPedido } from './pages/ConfirmacionPedido'
-export { ImpactoPage } from './pages/ImpactoPage'
-export { PanelAdmin } from './pages/PanelAdmin'
+export { OrderConfirmationPage } from './pages/OrderConfirmationPage'
+export { ImpactPage } from './pages/ImpactPage'
+export { AdminDashboardPage } from './pages/AdminDashboardPage'
+export { GroupConfirmationPage } from './pages/GroupConfirmationPage'

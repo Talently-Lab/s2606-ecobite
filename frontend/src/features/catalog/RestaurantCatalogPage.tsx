@@ -91,11 +91,12 @@ export function RestaurantCatalogPage() {
     })
   return (
     <CatalogLayout>
-      <div className="page-intro">
-        <span className="eyebrow">SEGUÍ TU ANTOJO</span>
-        <h1 className="font-display text-3xl font-semibold">Restaurantes</h1>
-        <p className="mt-2 text-musgo">Encontrá tu próxima comida y conocé su impacto.</p>
-      </div>
+      <header className="space-y-2">
+        <h1 className="font-sans text-2xl font-semibold tracking-tight sm:text-3xl">
+          ¿Qué se te antoja hoy?
+        </h1>
+        <p className="text-musgo">Elegí un local y armá tu pedido.</p>
+      </header>
       {selected !== null ? (
         <div className="catalog-selection">
           <div>

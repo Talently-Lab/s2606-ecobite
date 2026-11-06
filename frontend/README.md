@@ -38,7 +38,9 @@ Antes de subir una feature (ver `docs/pm/flujo-de-trabajo-git.md`): `npm run for
 
 `VITE_API_URL`: URL base de la API (ej. `http://localhost:3000/api`).
 
-Si queda vacía, los servicios usan mocks en `localStorage` (por ejemplo `src/features/auth/services/authMock.ts`). Sirven solo para desarrollar la UI mientras el backend no esté listo.
+Si queda vacía, se usa `http://localhost:3000/api`. El frontend requiere la API; no hay un modo mock.
+
+`VITE_IMAGES_BASE_URL`: base pública de CloudFront para completar las fotos del catálogo cuando la API devuelve `imageUrl: null`. El valor está en `.env.example`; se usan las rutas `restaurants/{id}.jpg` y `dishes/{id}.jpg`. Las URLs de la API tienen prioridad. Si no se configura esta variable o una imagen falla, se conserva el estado sin fotografía. Reiniciá Vite después de cambiar `.env`.
 
 ## Estructura
 
@@ -54,12 +56,15 @@ src/
       hooks/            useAuth
       pages/            LoginPage, RegisterPage (+ tests)
       routes/           GuestRoute, ProtectedRoute
-      services/         authService (API real) y authMock
+      services/         authService (API real)
       messages.ts       Textos y mensajes de error
       types.ts          Tipos y contrato de la API de auth
       validation.ts     Validaciones (+ tests)
       index.ts          API pública de la feature
-    home/               Portada y mapa
+    home/               Portada, mapa y estimación de rutas
+    catalog/            Restaurantes, menús y carrito
+    panel/              Checkout, confirmaciones, impacto y administración
+    information/        Metodología, contacto y adhesión de locales
   shared/
     assets/             Logos
     components/ui/      Button, TextField, PasswordField, Alert…
@@ -95,8 +100,8 @@ El contrato de auth que espera el front está documentado en `src/features/auth/
 
 La interfaz usa Fraunces para títulos e Inter para lectura. El hero de descubrimiento
 usa Inter en su título «Encontrá dónde comer.» y agrupa «Ver restaurantes» y
-«Explorar el mapa» en un solo bloque de acciones. La portada carga GSAP,
-ScrollTrigger bajo demanda. La inicialización espera al montaje del contenedor,
+«Explorar el mapa» en un solo bloque de acciones. La portada y Leaflet se cargan solo al entrar al inicio. GSAP y
+ScrollTrigger también se cargan bajo demanda. La inicialización espera al montaje del contenedor,
 incluso cuando el módulo ya está en caché. Las animaciones y los listeners se
 limpian al salir; imágenes del hero y fuentes disparan el recálculo de medidas.
 El hero se transforma en un mapa de ancho completo mediante zoom del bowl y apertura
@@ -115,7 +120,7 @@ nombre, dirección e información ecológica. «Ver más» lleva a
 `/restaurantes?restaurante=ID`; el catálogo filtra el resultado actual por ID sin
 modificar la API y ofrece «Ver todos» para quitar la selección.
 Los WebP de marca y sus prompts están en `src/shared/assets/GENERATED-ASSETS.md`.
-Las tarjetas usan exclusivamente las imágenes recibidas de la API o un estado sin fotografía.
+Las tarjetas usan las imágenes de la API o la base de CloudFront configurada; si fallan, muestran el estado sin fotografía.
 
 `Mi impacto` consulta el CO₂ acumulado de `/home`. No muestra historial ni métricas
 sin fuente real. Los campos opcionales `imageUrl` y `communityImpact` permiten usar

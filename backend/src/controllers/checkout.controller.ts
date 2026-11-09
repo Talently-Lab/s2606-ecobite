@@ -1,3 +1,4 @@
+import { DeliveryError } from "../services/delivery.service";
 import { NextFunction, Request, Response } from "express";
 import {
   CheckoutError,
@@ -22,12 +23,12 @@ export class CheckoutController {
         data: result,
       });
     } catch (error) {
-      if (error instanceof CheckoutError) {
+      if (error instanceof CheckoutError || error instanceof DeliveryError) {
         res.status(error.statusCode).json({
           error: {
             code: error.code,
             message: error.message,
-            fields: error.fields,
+            fields: error instanceof CheckoutError ? error.fields : {},
           },
         });
         return;

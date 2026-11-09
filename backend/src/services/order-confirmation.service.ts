@@ -26,6 +26,7 @@ export class OrderConfirmationService {
         estado_simulado: true,
         total: true,
         zona: true,
+        distancia_km: true,
         restaurantes: {
           select: {
             id_restaurante: true,
@@ -86,6 +87,7 @@ export class OrderConfirmationService {
         status: order.estado_simulado,
         total: order.total.toNumber(),
         zone: order.zona,
+        distanceKm: order.distancia_km.toNumber(),
         restaurant: {
           id: order.restaurantes.id_restaurante,
           name: order.restaurantes.nombre,

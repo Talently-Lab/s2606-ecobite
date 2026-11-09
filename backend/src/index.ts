@@ -1,4 +1,5 @@
 import express from "express";
+import deliveryRoutes from "./routes/delivery.routes";
 import cors from "cors";
 import helmet from "helmet";
 import "dotenv/config";
@@ -58,6 +59,7 @@ app.get(["/api-docs", "/api-docs/"], (_req, res) => {
 
 app.use("/api-docs", swaggerUi.serveWithOptions({ redirect: false }));
 
+app.use("/api/delivery", deliveryRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/home", homeRoutes);
 app.use("/api/restaurantes", catalogRoutes);

@@ -40,6 +40,8 @@ export class HomeService {
           direccion: true,
           envase_biodegradable: true,
           indicador_eco: true,
+          latitud: true,
+          longitud: true,
         },
         orderBy: { nombre: "asc" },
       }),
@@ -178,6 +180,8 @@ export class HomeService {
         imageUrl: null,
         biodegradablePackaging: restaurante.envase_biodegradable,
         ecoIndicator: restaurante.indicador_eco,
+        latitude: restaurante.latitud?.toNumber() ?? null,
+        longitude: restaurante.longitud?.toNumber() ?? null,
       })),
 
       featuredDishes: platillosDestacados.map((platillo) => ({

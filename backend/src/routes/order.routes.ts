@@ -1,10 +1,11 @@
+import { deliveryRateLimit } from "../middlewares/delivery-rate-limit";
 import { Router } from "express";
 import { autenticarUsuario } from "../middlewares/auth.middleware";
 import { createOrder } from "../controllers/order.controller";
 
 const router = Router();
 
-router.post("/", autenticarUsuario, (req, res) =>
+router.post("/", autenticarUsuario, deliveryRateLimit, (req, res) =>
   createOrder(req, res)
 );
 

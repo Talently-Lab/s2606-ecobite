@@ -5,7 +5,7 @@ Description: EcoBite API - AWS Lambda y API Gateway
 Globals:
   Function:
     Runtime: nodejs24.x
-    Timeout: 15
+    Timeout: 30
     MemorySize: 512
     Environment:
       Variables:
@@ -15,9 +15,16 @@ Globals:
         DATABASE_URL: !Ref DatabaseUrl
         DIRECT_URL: !Ref DirectUrl
         JWT_SECRET: !Ref JwtSecret
+        GEOAPIFY_API_KEY: !Ref GeoapifyApiKey
         IMAGES_BASE_URL: !Ref ImagesBaseUrl
 
 Parameters:
+  GeoapifyApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Clave privada de Geoapify para buscar direcciones
+
   DatabaseUrl:
     Type: String
     NoEcho: true

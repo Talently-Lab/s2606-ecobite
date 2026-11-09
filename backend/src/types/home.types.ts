@@ -19,6 +19,8 @@ export interface RestaurantDto {
   imageUrl: string | null;
   biodegradablePackaging: boolean;
   ecoIndicator: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface FeaturedDishDto {

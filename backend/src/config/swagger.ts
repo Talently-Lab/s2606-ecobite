@@ -51,6 +51,15 @@ const options: swaggerJsdoc.Options = {
         },
       },
       schemas: {
+        DeliveryDestination: {
+          type: "object", required: ["latitude", "longitude", "label"],
+          properties: {
+            latitude: { type: "number", minimum: -90, maximum: 90 },
+            longitude: { type: "number", minimum: -180, maximum: 180 },
+            label: { type: "string", minLength: 1, maxLength: 500 },
+          },
+        },
+
         ErrorResponse: {
           type: "object",
           properties: {
@@ -344,6 +353,7 @@ const options: swaggerJsdoc.Options = {
             status: { type: "string", example: "completed" },
             total: { type: "number", example: 9000 },
             zone: { type: "string", example: "Palermo" },
+            distanceKm: { type: "number", example: 2.5 },
             restaurant: {
               type: "object",
               properties: {
@@ -367,7 +377,7 @@ const options: swaggerJsdoc.Options = {
             },
           },
           required: [
-            "id", "date", "status", "total", "zone",
+            "id", "date", "status", "total", "zone", "distanceKm",
             "restaurant", "items", "environmentalImpact",
           ],
         },
@@ -402,16 +412,10 @@ const options: swaggerJsdoc.Options = {
         },
         CheckoutQuoteRequest: {
           type: "object",
-          required: ["restaurantId", "zone", "items"],
+          required: ["restaurantId", "destination", "items"],
           properties: {
             restaurantId: { type: "integer", minimum: 1, example: 1 },
-            zone: {
-              type: "string",
-              minLength: 1,
-              maxLength: 50,
-              example: "cercana",
-              description: "Zona indicada por el cliente. En esta cotización solo se valida que sea un texto de hasta 50 caracteres.",
-            },
+            destination: { $ref: "#/components/schemas/DeliveryDestination" },
             items: {
               type: "array",
               minItems: 1,
@@ -456,27 +460,24 @@ const options: swaggerJsdoc.Options = {
               properties: {
                 restaurantId: { type: "integer", example: 1 },
                 restaurantName: { type: "string", example: "Verde Bowl" },
-                zone: { type: "string", example: "cercana" },
+                zone: { type: "string", example: "ruta", description: "Dato heredado; pedidos nuevos usan ruta" },
                 items: {
                   type: "array",
                   items: { $ref: "#/components/schemas/CheckoutQuoteItem" },
                 },
                 subtotal: { type: "number", example: 9000 },
-                deliveryFee: { type: "number", nullable: true, example: null },
-                total: { type: "number", nullable: true, example: null },
-                environmentalImpact: {
-                  type: "number",
-                  nullable: true,
-                  example: null,
-                },
-                requiresEnvironmentalRules: {
-                  type: "boolean",
-                  example: true,
-                },
+                destination: { $ref: "#/components/schemas/DeliveryDestination" },
+                distanceKm: { type: "number", minimum: 0, exclusiveMinimum: true, example: 2.5 },
+                deliveryToken: { type: "string", description: "Prueba firmada del recorrido, válida 15 minutos. Devolverla dentro de reviewedQuote para confirmar sin consultar otra vez al proveedor de rutas." },
+                methodology: { type: "string", example: "transport-170g-v1" },
+                deliveryFee: { type: "number", example: 0 },
+                total: { type: "number", example: 9000 },
+                environmentalImpact: { type: "object", required: ["co2SavedKg"], properties: { co2SavedKg: { type: "number", example: 0.43 } } },
+                requiresEnvironmentalRules: { type: "boolean", example: false },
               },
               required: [
                 "restaurantId", "restaurantName", "zone", "items", "subtotal",
-                "deliveryFee", "total", "environmentalImpact",
+                "deliveryFee", "total", "environmentalImpact", "destination", "distanceKm", "methodology",
                 "requiresEnvironmentalRules",
               ],
             },
@@ -502,6 +503,18 @@ const options: swaggerJsdoc.Options = {
       },
     },
     paths: {
+      "/api/delivery/addresses": { get: {
+        tags: ["Checkout"], summary: "Buscar direcciones con Geoapify (público)",
+        description: "Búsqueda explícita, hasta 5 resultados. Mostrar atribución Geoapify/OpenStreetMap. 30 solicitudes/minuto por IP/proceso; configurar límite global en el despliegue.",
+        parameters: [{ in: "query", name: "q", required: true, schema: { type: "string", minLength: 3, maxLength: 200 } }],
+        responses: { "200": { description: "Resultados; lista vacía si no hay coincidencias", content: { "application/json": { schema: { type: "object", properties: { data: { type: "array", items: { $ref: "#/components/schemas/DeliveryDestination" } } } } } } }, "400": { description: "Búsqueda inválida" }, "429": { description: "Límite de solicitudes" }, "503": { description: "Proveedor o configuración no disponible" } },
+      } },
+      "/api/delivery/estimate": { post: {
+        tags: ["Checkout"], summary: "Estimar recorrido de referencia y CO₂ (público)",
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["restaurantId", "destination"], properties: { restaurantId: { type: "integer", minimum: 1 }, destination: { $ref: "#/components/schemas/DeliveryDestination" } } } } } },
+        responses: { "200": { description: "data: distanceKm, co2SavedKg, coordinates (latitud,longitud), destination y methodology. 2,50 km → 0,43 kg. Recorrido por calles para auto, sin tiempo de entrega." }, "400": { description: "Entrada inválida" }, "404": { description: "Restaurante no disponible" }, "422": { description: "Restaurante sin ubicación" }, "429": { description: "Límite de solicitudes" }, "502": { description: "Sin recorrido o respuesta inválida" }, "503": { description: "Proveedor caído" } },
+      } },
+
       "/api/auth/register": {
         post: {
           tags: ["Autenticación"],
@@ -925,7 +938,7 @@ const options: swaggerJsdoc.Options = {
           tags: ["Checkout"],
           summary: "Calcular una cotización preliminar del carrito",
           description:
-            "Valida el restaurante activo y los platos disponibles, y calcula los precios y subtotales usando los valores del catálogo. No crea pedidos ni calcula el costo de despacho, el total final o el impacto ambiental.",
+            "Valida el restaurante activo y los platos disponibles, y calcula los precios y subtotales usando los valores del catálogo. Calcula distancia OSRM redondeada a 2 decimales y CO₂ a 0,17 kg/km por entrega; despacho gratuito simulado. Requiere destino confirmado. No crea pedidos.",
           security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
@@ -968,6 +981,7 @@ const options: swaggerJsdoc.Options = {
                 },
               },
             },
+            "422": { description: "El recorrido debe tener una distancia mayor a cero" },
             "500": {
               description: "Error interno o datos de precios inválidos en el catálogo",
               content: {
@@ -992,20 +1006,15 @@ const options: swaggerJsdoc.Options = {
               "application/json": {
                 schema: {
                   type: "object",
-                  required: ["restaurantId", "zone", "items"],
+                  required: ["restaurantId", "destination", "items", "reviewedQuote"],
                   properties: {
                     restaurantId: {
                       type: "integer",
                       minimum: 1,
                       example: 1,
                     },
-                    zone: {
-                      type: "string",
-                      maxLength: 50,
-                      description: "Zona de demostración con distancia simulada provisional. Valores admitidos: cercana (2 km), media (5 km), lejana (8 km). Se aceptan mayúsculas y minúsculas.",
-                      enum: ["cercana", "media", "lejana"],
-                      example: "cercana",
-                    },
+                    destination: { $ref: "#/components/schemas/DeliveryDestination" },
+                    reviewedQuote: { $ref: "#/components/schemas/CheckoutQuoteResponse/properties/data", description: "Cotización completa que revisó el usuario. Con deliveryToken vigente se reutiliza el recorrido firmado; precios y disponibilidad se revalidan antes de guardar. Devuelve 409 si cambian o vence la prueba." },
                     items: {
                       type: "array",
                       minItems: 1,
@@ -1032,6 +1041,9 @@ const options: swaggerJsdoc.Options = {
             },
           },
           responses: {
+            "409": { description: "Cotización cambiada antes de guardar. Respuesta incluye quote actualizada; requiere revisión y nueva confirmación." },
+            "502": { description: "No hay recorrido válido" },
+            "503": { description: "Proveedor de recorrido no disponible" },
             "201": {
               description:
                 "Pedido creado correctamente con su confirmación e impacto ambiental actualizado",
@@ -1079,7 +1091,7 @@ const options: swaggerJsdoc.Options = {
             },
             "422": {
               description:
-                "Valor ambiental inválido o impacto ambiental total fuera del límite permitido",
+                "Restaurante sin ubicación válida para estimar el recorrido",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/OrderErrorResponse" },
@@ -1748,7 +1760,7 @@ const options: swaggerJsdoc.Options = {
                                   type: "string",
                                   example: "Verde Bowl",
                                 },
-                                zone: { type: "string", example: "cercana" },
+                                zone: { type: "string", example: "ruta", description: "Dato heredado; pedidos nuevos usan ruta" },
                                 total: { type: "number", example: 9000 },
                                 co2SavedKg: {
                                   type: "number",

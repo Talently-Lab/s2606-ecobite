@@ -1,3 +1,4 @@
+import type { DeliveryDestination } from "../services/delivery.service";
 export interface CheckoutItemInput {
   dishId: number;
   quantity: number;
@@ -5,7 +6,7 @@ export interface CheckoutItemInput {
 
 export interface CheckoutRequest {
   restaurantId: number;
-  zone: string;
+  destination: DeliveryDestination;
   items: CheckoutItemInput[];
 }
 
@@ -18,13 +19,17 @@ export interface CheckoutItemDto {
 }
 
 export interface CheckoutQuoteDto {
+  deliveryToken?: string;
+  destination: DeliveryDestination;
+  distanceKm: number;
+  methodology: string;
   restaurantId: number;
   restaurantName: string;
   zone: string;
   items: CheckoutItemDto[];
   subtotal: number;
-  deliveryFee: null;
-  total: null;
-  environmentalImpact: null;
-  requiresEnvironmentalRules: true;
+  deliveryFee: number;
+  total: number;
+  environmentalImpact: { co2SavedKg: number };
+  requiresEnvironmentalRules: false;
 }

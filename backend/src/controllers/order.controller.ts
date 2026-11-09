@@ -1,3 +1,6 @@
+import { CheckoutError } from "../services/checkout.service";
+import { Prisma } from "@prisma/client";
+import { DeliveryError } from "../services/delivery.service";
 import type { Request, Response } from "express";
 import {
   orderService,
@@ -26,11 +29,11 @@ export const createOrder = async (req: Request, res: Response) => {
 
     if (
       typeof payload.restaurantId !== "number" ||
-      typeof payload.zone !== "string" ||
+      !payload.destination || !payload.reviewedQuote ||
       !Array.isArray(payload.items)
     ) {
       return res.status(400).json({
-        message: "restaurantId, zone e items son obligatorios y deben tener el formato correcto",
+        message: "restaurantId, destination, reviewedQuote e items son obligatorios y deben tener el formato correcto",
         code: "INVALID_BODY",
       });
     }
@@ -53,7 +56,8 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const input: CreateOrderInput = {
       restaurantId: payload.restaurantId,
-      zone: payload.zone,
+      destination: payload.destination as CreateOrderInput["destination"],
+      reviewedQuote: payload.reviewedQuote as CreateOrderInput["reviewedQuote"],
       items: payload.items as CreateOrderInput["items"],
     };
 
@@ -76,13 +80,20 @@ export const createOrder = async (req: Request, res: Response) => {
       data: confirmation,
     });
   } catch (error) {
-    if (error instanceof OrderServiceError) {
+    if (error instanceof OrderServiceError || error instanceof CheckoutError || error instanceof DeliveryError) {
       return res.status(error.statusCode).json({
         message: error.message,
         code: error.code,
+        quote: error instanceof OrderServiceError ? error.quote : undefined,
+        safeToRetry: error instanceof DeliveryError,
       });
     }
 
+    console.error("Order creation failed", {
+      type: error instanceof Error ? error.name : "unknown",
+      code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code
+        : error instanceof Prisma.PrismaClientInitializationError ? error.errorCode : undefined,
+    });
     return res.status(500).json({
       message: "Error interno al crear el pedido",
       code: "ORDER_CREATION_FAILED",

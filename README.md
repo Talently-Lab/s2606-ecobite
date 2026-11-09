@@ -12,7 +12,7 @@ Tres piezas, todavía en ramas separadas:
 - **API.** Node.js y Express, con carpetas de rutas, controladores y servicios. Vive en `backend/`. La base se consulta con Prisma. El despliegue en Lambda y API Gateway está en [`docs/api/backend-lambda-deploy.md`](docs/api/backend-lambda-deploy.md).
 - **Datos.** Postgres en Supabase. El modelo sale del diagrama del equipo y suma los campos que hacen falta para el impacto (zona, distancia, estado del pedido, tipo de envase y si el restaurante está activo).
 
-El pedido simulado recorre catálogo, carrito y checkout sin pasarela de pago. La distancia no se mide en vivo: es el promedio de la zona del restaurante. El CO₂ del KPI se guarda cuando el pedido queda completado y la entrega es en bici. Si el pedido está pendiente o cancelado, la fila se conserva y el CO₂ de ese pedido no suma.
+El pedido simulado recorre catálogo, carrito y checkout sin pasarela de pago. El usuario confirma su destino por GPS o eligiendo una dirección de Geoapify. El backend consulta un recorrido de referencia por calles con OSRM y redondea la distancia a dos decimales antes de calcular el CO₂ a 0,17 kg/km. Es una estimación provisional por entrega y restaurante, independiente de los platos; no es ruta ciclista ni tiempo de entrega. El CO₂ del KPI se guarda cuando el pedido queda completado y la entrega es en bici. Si el pedido está pendiente o cancelado, la fila se conserva y el CO₂ de ese pedido no suma.
 
 Los diagramas de arquitectura se van a sumar en este archivo más adelante. Hoy el modelo de datos está en `docs/proyecto_ecobite`.
 
@@ -99,3 +99,5 @@ Configura en el entorno del backend:
 - `CORS_ORIGIN`: origen web exacto permitido, incluyendo esquema y puerto cuando corresponda (por ejemplo, `http://localhost:5173`). No uses `*`.
 
 Registro y login comparten un límite de 10 solicitudes por IP cada 15 minutos. El almacén predeterminado es local al proceso; en despliegues con varias instancias debe configurarse un almacén compartido y validarse la IP cliente con la topología de proxy real antes de ajustar `trust proxy`.
+
+La búsqueda requiere `GEOAPIFY_API_KEY` solo en el backend. Se utiliza el esquema existente: se guardan la distancia y el CO₂ del pedido; el destino y la versión del cálculo se usan durante la cotización y no se persisten. Ver [metodología y configuración](backend/docs/proyecto_ecobite/metodologia-impacto-ambiental.md).

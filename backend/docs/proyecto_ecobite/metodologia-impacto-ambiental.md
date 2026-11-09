@@ -1,71 +1,17 @@
-# Metodología de impacto ambiental — EcoBite
+# Impacto de transporte (transport-170g-v1)
 
-**Versión:** 1.0
-**Alcance:** MVP educativo
-**Fecha:** 29-10-2026
+Destino confirmado por GPS a pedido del usuario o elegido explícitamente entre resultados de Geoapify. El backend consulta OSRM desde las coordenadas del restaurante hasta el destino. Es un recorrido de referencia por calles para automóvil; no es una ruta ciclista, cobertura confirmada ni tiempo de entrega.
 
-## 1. Propósito
+Se redondea primero la distancia a dos decimales (km), luego se multiplica por 0,17 kg/km y se redondea a dos decimales (kg). 2,50 km → 0,43 kg. Distancia cero → impacto cero. Comparación provisional de emisiones directas de automóvil frente a bicicleta (0 kg/km); no es una medición certificada ni la huella de los alimentos.
 
-Definir una regla única, sencilla y trazable para calcular el impacto ambiental mostrado por EcoBite en los pedidos.
+Cada pedido corresponde a una entrega de un restaurante: agregar platos no aumenta el ahorro. Cotización, mapa y pedido usan el mismo servicio. La cotización incluye `deliveryToken`, una prueba firmada con `JWT_SECRET`, audiencia exclusiva y vencimiento de 15 minutos, vinculada al restaurante, destino, distancia e impacto. Al confirmar se reutiliza ese recorrido sin depender otra vez de OSRM; una prueba inválida o vencida devuelve 409 y exige recotizar. Clientes anteriores sin prueba siguen consultando el proveedor. Precios y disponibilidad se verifican otra vez dentro de una transacción serializable; pedido, detalles y métrica se guardan juntos. No se reenvían automáticamente confirmaciones inciertas.
 
-## 2. Naturaleza de la estimación
+El pedido conserva la distancia y el CO₂ calculados en los campos existentes. El destino y la versión del método solo se usan durante la cotización; no se guardan en la base. Confirmación y Mi impacto usan los valores guardados. No se recalculan registros históricos. Los campos por plato se mantienen por compatibilidad; nuevos detalles usan CO₂ cero. La zona de nuevos pedidos es `ruta`.
 
-El campo `platillos.co2_ahorrado_unit` se utilizará como una estimación educativa interna de CO₂ por porción.
+## Configuración y despliegue
 
-No se ha encontrado documentación que permita verificar su origen, fórmula o validación científica.
+Configurar `GEOAPIFY_API_KEY` solo en el backend (parámetro SAM `GeoapifyApiKey`). Ver [Geoapify](https://apidocs.geoapify.com/docs/geocoding/forward-geocoding/). No se envía la clave al navegador. Búsqueda por botón, máximo cinco resultados, atribución visible. Límite de 30 peticiones/minuto por IP y proceso para endpoints públicos de entrega. En Lambda/múltiples procesos, agregar un límite global en API Gateway/WAF antes de exposición pública; el contador en memoria no comparte cuotas entre instancias. Configurar también cuota diaria en Geoapify.
 
-Por tanto:
-- No representa una medición directa.
-- No constituye una huella de carbono certificada.
-- No debe presentarse como un resultado científicamente validado.
+No se requieren columnas ni migraciones nuevas. Se conservan las restricciones existentes: CO₂ de un pedido completado en bici = round(distancia_km × 0,17, 2), y distancia_km > 0. El mapa puede mostrar un recorrido de cero kilómetros, pero el checkout lo rechaza con 422 antes de escribir. Sin ubicación del restaurante, recorrido o proveedor disponible se ofrece reintentar, sin distancias promedio.
 
-## 3. Regla de cálculo
-
-Para cada detalle:
-
-CO₂ del detalle = CO₂ estimado por porción × cantidad.
-
-El impacto total del pedido corresponde a la suma del impacto de todos sus detalles.
-
-Los resultados se almacenarán con dos decimales.
-
-## 4. Elementos incluidos y excluidos
-
-Incluidos:
-- Valor `co2_ahorrado_unit` del platillo.
-- Cantidad de porciones.
-- Suma de los impactos de los detalles.
-
-Excluidos por falta de metodología y datos verificables:
-- Beneficios atribuidos al transporte.
-- Beneficios atribuidos al tipo de envase.
-- Factores adicionales sin fuente y regla de cálculo documentadas.
-
-## 5. Validaciones
-
-- El valor ambiental unitario debe ser numérico, finito y no negativo.
-- La cantidad debe ser un entero positivo.
-- Los cálculos deben respetar la precisión de almacenamiento de dos decimales.
-
-## 6. Estados y persistencia
-
-- `pending`: pedido pendiente, sin impacto contabilizado.
-- `completed`: pedido con impacto calculado y registrado.
-- `cancelled`: pedido que no genera impacto contabilizado.
-
-Cada pedido completado tendrá un único registro asociado en `metricas_impacto`.
-
-Los subtotales, el total del pedido, el registro de impacto y el cambio de estado deben persistirse dentro de una misma transacción. Si alguna operación falla, la transacción debe revertirse.
-
-## 7. Fuentes y limitaciones
-
-Referencias para futuras mejoras:
-- Our World in Data: https://ourworldindata.org/environmental-impacts-of-food
-- ISO 14067:2018: https://www.iso.org/standard/71206.html
-- GHG Protocol Product Standard: https://ghgprotocol.org/product-standard
-
-Estas referencias no validan los valores actualmente almacenados en EcoBite.
-
-## 8. Mejoras futuras
-
-Para evolucionar hacia un cálculo ambiental fundamentado será necesario documentar el origen de los valores, disponer de datos de ingredientes y cantidades, definir límites del análisis y establecer factores de emisión verificables.
+Las búsquedas reales requieren la clave y acceso de red.

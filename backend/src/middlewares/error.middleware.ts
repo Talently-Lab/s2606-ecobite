@@ -7,7 +7,7 @@ export const errorMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  console.error("Error no controlado:", error);
+  console.error("Error no controlado", { type: error instanceof Error ? error.name : "unknown" });
 
   if (res.headersSent) {
     next(error);

@@ -14,6 +14,7 @@ export interface OrderConfirmationDto {
   status: string;
   total: number;
   zone: string;
+  distanceKm: number;
   restaurant: {
     id: number;
     name: string;

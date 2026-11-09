@@ -1,251 +1,122 @@
 import prisma from "../config/db";
-import { ZONE_DISTANCES_KM } from "../config/zone-distances";
 import { ORDER_STATUS } from "../constants/order-status";
-
+import { CheckoutService, reviewedDelivery } from "./checkout.service";
+import type { DeliveryDestination } from "./delivery.service";
+import type { CheckoutQuoteDto } from "../types/checkout.types";
 
 export interface CreateOrderInput {
   restaurantId: number;
-  zone: string;
-  items: Array<{
-    dishId: number;
-    quantity: number;
-  }>;
+  destination: DeliveryDestination;
+  items: Array<{ dishId: number; quantity: number }>;
+  reviewedQuote: CheckoutQuoteDto;
 }
-
 export class OrderServiceError extends Error {
   constructor(
     public readonly statusCode: number,
     public readonly code: string,
-    message: string
+    message: string,
+    public readonly quote?: CheckoutQuoteDto,
   ) {
     super(message);
-    this.name = "OrderServiceError";
   }
 }
-
-const roundToTwo = (value: number): number =>
-  Math.round((value + Number.EPSILON) * 100) / 100;
-
+export function assertReviewedQuote(
+  reviewed: unknown,
+  current: CheckoutQuoteDto,
+) {
+  const value = reviewed as CheckoutQuoteDto | null;
+  if (
+    !value ||
+    value.restaurantId !== current.restaurantId ||
+    value.subtotal !== current.subtotal ||
+    value.total !== current.total ||
+    value.deliveryFee !== current.deliveryFee ||
+    value.distanceKm !== current.distanceKm ||
+    value.environmentalImpact?.co2SavedKg !==
+      current.environmentalImpact.co2SavedKg ||
+    value.methodology !== current.methodology ||
+    value.destination?.latitude !== current.destination.latitude ||
+    value.destination?.longitude !== current.destination.longitude ||
+    value.destination?.label !== current.destination.label ||
+    !Array.isArray(value.items) ||
+    value.items.length !== current.items.length ||
+    current.items.some(
+      (item) =>
+        !value.items.some(
+          (old) =>
+            old?.dishId === item.dishId &&
+            old.quantity === item.quantity &&
+            old.unitPrice === item.unitPrice &&
+            old.subtotal === item.subtotal,
+        ),
+    )
+  ) {
+    throw new OrderServiceError(
+      409,
+      "QUOTE_CHANGED",
+      "La cotización cambió. Revisá los precios, la distancia y el impacto antes de confirmar.",
+      current,
+    );
+  }
+}
 export const orderService = {
   async createOrder(userId: number, input: CreateOrderInput) {
-    if (!Number.isSafeInteger(userId) || userId <= 0) {
+    if (!Number.isSafeInteger(userId) || userId <= 0)
       throw new OrderServiceError(
         401,
         "INVALID_TOKEN",
-        "El usuario autenticado no es válido"
+        "El usuario autenticado no es válido",
       );
-    }
-
-    if (
-      !Number.isSafeInteger(input.restaurantId) ||
-      input.restaurantId <= 0
-    ) {
-      throw new OrderServiceError(
-        400,
-        "INVALID_RESTAURANT_ID",
-        "El restaurante indicado no es válido"
-      );
-    }
-
-    const zone = input.zone?.trim().toLowerCase();
-
-    if (!zone || zone.length > 50) {
-      throw new OrderServiceError(
-        400,
-        "INVALID_ZONE",
-        "La zona es obligatoria y debe tener como máximo 50 caracteres"
-      );
-    }
-
-    if (
-      !Array.isArray(input.items) ||
-      input.items.length === 0 ||
-      input.items.some(
-        (item) =>
-          !Number.isSafeInteger(item.dishId) ||
-          item.dishId <= 0 ||
-          !Number.isSafeInteger(item.quantity) ||
-          item.quantity <= 0
-      )
-    ) {
-      throw new OrderServiceError(
-        400,
-        "INVALID_ITEMS",
-        "El pedido debe incluir platillos con identificadores y cantidades válidos"
-      );
-    }
-
-    const dishIds = input.items.map((item) => item.dishId);
-
-    if (new Set(dishIds).size !== dishIds.length) {
-      throw new OrderServiceError(
-        400,
-        "DUPLICATE_ITEMS",
-        "Cada platillo debe aparecer una sola vez en la lista"
-      );
-    }
-
-    return prisma.$transaction(async (tx) => {
-      const restaurant = await tx.restaurantes.findFirst({
-        where: {
-          id_restaurante: input.restaurantId,
-          activo: true,
-        },
-        select: {
-          id_restaurante: true,
-          envase_biodegradable: true,
-        },
-      });
-
-      if (!restaurant) {
-        throw new OrderServiceError(
-          404,
-          "RESTAURANT_NOT_FOUND",
-          "El restaurante no existe o no está disponible"
-        );
-      }
-
-      const dishes = await tx.platillos.findMany({
-        where: {
-          id_platillo: { in: dishIds },
-          id_restaurante: restaurant.id_restaurante,
-          disponible: true,
-        },
-        select: {
-          id_platillo: true,
-          nombre: true,
-          precio: true,
-          co2_ahorrado_unit: true,
-        },
-      });
-
-      if (dishes.length !== dishIds.length) {
-        throw new OrderServiceError(
-          400,
-          "INVALID_DISHES",
-          "Uno o más platillos no están disponibles o no pertenecen al restaurante"
-        );
-      }
-
-      const averageDistance = ZONE_DISTANCES_KM[zone];
-
-      if (averageDistance === undefined) {
-        throw new OrderServiceError(
-          400,
-          "INVALID_ZONE",
-          "La zona indicada no está configurada para la simulación"
-        );
-      }
-
-      const dishesById = new Map(
-        dishes.map((dish) => [dish.id_platillo, dish])
-      );
-
-      const items = input.items.map((item) => {
-        const dish = dishesById.get(item.dishId);
-
-        if (!dish) {
-          throw new OrderServiceError(
-            400,
-            "INVALID_DISHES",
-            "No se pudo validar uno de los platillos"
-          );
-        }
-
-        const unitPrice = Number(dish.precio);
-        const co2SavedPerUnit = Number(dish.co2_ahorrado_unit);
-
-        if (!Number.isFinite(co2SavedPerUnit) || co2SavedPerUnit < 0) {
-          throw new OrderServiceError(
-            422,
-            "INVALID_ENVIRONMENTAL_VALUE",
-            "Uno de los platillos tiene un valor ambiental inválido"
-          );
-        }
-
-        const co2SubtotalCents =
-          Math.round(co2SavedPerUnit * 100) * item.quantity;
-
-        return {
-          id_platillo: dish.id_platillo,
-          cantidad: item.quantity,
-          precio_unitario: unitPrice,
-          subtotalCents: Math.round(unitPrice * 100) * item.quantity,
-          co2SubtotalCents,
-        };
-      });
-
-      const totalCents = items.reduce(
-        (sum, item) => sum + item.subtotalCents,
-        0
-      );
-
-      const co2TotalCents = items.reduce(
-        (sum, item) => sum + item.co2SubtotalCents,
-        0
-      );
-
-      if (
-          !Number.isSafeInteger(co2TotalCents) ||
-          co2TotalCents > 99_999_999
-      ) {
-          throw new OrderServiceError(
-            422,
-            "INVALID_ENVIRONMENTAL_TOTAL",
-            "El impacto ambiental total supera el límite permitido"
-          );
-        }
-
-      const packagingType = restaurant.envase_biodegradable
-            ? "biodegradable"
-            : "plastico";
-
-      const order = await tx.pedidos.create({
-        data: {
-          id_usuario_cliente: userId,
-          id_restaurante: restaurant.id_restaurante,
-          fecha_pedido: new Date(),
-          estado_simulado: ORDER_STATUS.PENDING,
-          total: roundToTwo(totalCents / 100),
-          co2_total_ahorrado: 0,
-          transporte_sin_emision: "bike",
-          zona: zone,
-          distancia_km: roundToTwo(Number(averageDistance)),
-          detalle_pedidos: {
-            create: items.map((item) => ({
-              id_platillo: item.id_platillo,
-              cantidad: item.cantidad,
-              precio_unitario: item.precio_unitario,
-              co2_subtotal: roundToTwo(item.co2SubtotalCents / 100),
-              tipo_envase: packagingType,
-            })),
+    const service = new CheckoutService();
+    // All provider requests finish before opening the database transaction.
+    const quote = await service.quote(input, prisma, reviewedDelivery(input));
+    assertReviewedQuote(input.reviewedQuote, quote);
+    return prisma.$transaction(
+      async (tx) => {
+        const current = await service.quote(input, tx, {
+          distanceKm: quote.distanceKm,
+          co2SavedKg: quote.environmentalImpact.co2SavedKg,
+          methodology: quote.methodology,
+        });
+        assertReviewedQuote(input.reviewedQuote, current);
+        const restaurant = await tx.restaurantes.findUniqueOrThrow({
+          where: { id_restaurante: input.restaurantId },
+        });
+        const order = await tx.pedidos.create({
+          data: {
+            id_usuario_cliente: userId,
+            id_restaurante: input.restaurantId,
+            fecha_pedido: new Date(),
+            estado_simulado: ORDER_STATUS.COMPLETED,
+            total: current.total,
+            co2_total_ahorrado: current.environmentalImpact.co2SavedKg,
+            transporte_sin_emision: "bike",
+            zona: "ruta",
+            distancia_km: current.distanceKm,
+            detalle_pedidos: {
+              create: current.items.map((item) => ({
+                id_platillo: item.dishId,
+                cantidad: item.quantity,
+                precio_unitario: item.unitPrice,
+                co2_subtotal: 0,
+                tipo_envase: restaurant.envase_biodegradable
+                  ? "biodegradable"
+                  : "plastico",
+              })),
+            },
+            metricas_impacto: {
+              create: {
+                id_usuario: userId,
+                co2_evitado_kg: current.environmentalImpact.co2SavedKg,
+                fecha_calculo: new Date(),
+              },
+            },
           },
-        },
-        include: {
-          detalle_pedidos: true,
-        },
-      });
-      await tx.metricas_impacto.create({
-        data: {
-          id_pedido: order.id_pedido,
-          id_usuario: userId,
-          co2_evitado_kg: roundToTwo(co2TotalCents / 100),
-          fecha_calculo: new Date(),
-        },
-      });
-      const completedOrder = await tx.pedidos.update({
-        where: {
-          id_pedido: order.id_pedido,
-        },
-        data: {
-          estado_simulado: ORDER_STATUS.COMPLETED,
-          co2_total_ahorrado: roundToTwo(co2TotalCents / 100),
-        },
-        include: {
-          detalle_pedidos: true,
-        },
-      });
-      return completedOrder;
-    });
+          include: { detalle_pedidos: true },
+        });
+        return order;
+      },
+      { isolationLevel: "Serializable" },
+    );
   },
 };

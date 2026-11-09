@@ -1,5 +1,4 @@
-import { Map as LeafletMap } from 'leaflet'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -17,13 +16,6 @@ const restaurant = {
   ecoIndicator: 'Reparto sustentable',
   latitude: -34.6037,
   longitude: -58.3816,
-}
-const restaurantWithoutCoordinates = {
-  ...restaurant,
-  id: 2,
-  name: 'Local sin coordenadas',
-  latitude: undefined,
-  longitude: undefined,
 }
 const data: HomeData = {
   userImpact: null,
@@ -70,46 +62,11 @@ function renderHome() {
   )
 }
 
-function authenticate() {
-  localStorage.setItem('ecobite.token', 'jwt-valido')
-  fetchMock.mockResolvedValueOnce(
-    response({
-      message: 'Usuario autenticado',
-      user: {
-        id_usuario: 1,
-        nombre: 'Ana Pérez',
-        email: 'ana@example.com',
-        rol: 'cliente',
-        fecha_registro: '2026-10-25T15:40:26.684Z',
-      },
-    }),
-  )
-}
-
 beforeEach(() => {
-  // Leaflet needs layout geometry; jsdom does not calculate CSS dimensions.
-  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1200)
-  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(800)
-  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(1200)
-  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(800)
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-    x: 0,
-    y: 0,
-    top: 0,
-    left: 0,
-    right: 1200,
-    bottom: 800,
-    width: 1200,
-    height: 800,
-    toJSON: () => ({}),
-  })
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockReset()
 })
-afterEach(() => {
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-})
+afterEach(() => vi.unstubAllGlobals())
 
 describe('HomePage', () => {
   it('carga el inicio bajo demanda desde el router y consulta sus restaurantes', async () => {
@@ -123,65 +80,9 @@ describe('HomePage', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'Encontrá dónde comer.' })).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Bowl de quinoa' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Mapa de restaurantes')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/home', expect.any(Object))
-  })
-
-  it('espera los datos y muestra el mapa ya encuadrado con sus marcadores, sin una ubicación provisional', async () => {
-    let resolveHome!: (response: Response) => void
-    fetchMock.mockImplementation(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveHome = resolve
-        }),
-    )
-    const fitBounds = vi.spyOn(LeafletMap.prototype, 'fitBounds')
-    const { container } = renderHome()
-    expect(container.querySelector('.leaflet-container')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Cargando restaurantes')
-    expect(fitBounds).not.toHaveBeenCalled()
-    await act(async () =>
-      resolveHome(
-        response({
-          data: { ...data, restaurants: [{ ...restaurant, latitude: -12.0464, longitude: -77.0428 }] },
-        }),
-      ),
-    )
-    expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
-    expect(fitBounds.mock.calls[0]?.[0]).toEqual([[-12.0464, -77.0428]])
-    expect(container.querySelector('.map-scene')).toHaveClass('is-prepared')
-    expect(container.querySelector('.map-scene')).toHaveAttribute('aria-hidden', 'false')
-    expect(screen.queryByText('Preparando mapa…')).not.toBeInTheDocument()
-  })
-
-  it('no vuelve a encuadrar por notificaciones de tamaño repetidas y limpia el observador al salir', async () => {
-    let resize = () => {}
-    const disconnect = vi.fn()
-    let width = 1200
-    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => width)
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        constructor(callback: () => void) {
-          resize = callback
-        }
-        observe() {}
-        disconnect = disconnect
-      },
-    )
-    fetchMock.mockResolvedValue(response({ data }))
-    const fitBounds = vi.spyOn(LeafletMap.prototype, 'fitBounds')
-    const { unmount } = renderHome()
-    await screen.findByRole('button', { name: 'Información de Verde Bowl' })
-    const initialFits = fitBounds.mock.calls.length
-    act(() => resize())
-    act(() => resize())
-    expect(fitBounds).toHaveBeenCalledTimes(initialFits)
-    width = 900
-    act(() => resize())
-    expect(fitBounds).toHaveBeenCalledTimes(initialFits + 1)
-    unmount()
-    expect(disconnect).toHaveBeenCalledTimes(1)
   })
 
   it('ofrece un CTA al catálogo y navegación móvil con estado expandido', async () => {
@@ -191,8 +92,8 @@ describe('HomePage', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Encontrá dónde comer.')
     expect(screen.queryByRole('link', { name: /Explorar restaurantes/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Ver restaurantes' })).toHaveAttribute('href', '/restaurantes')
-    expect(screen.getByRole('link', { name: 'Explorar el mapa' })).toHaveAttribute('href', '#mapa')
+    expect(screen.getByRole('link', { name: 'Ver opciones' })).toHaveAttribute('href', '#opciones')
+    expect(screen.getByRole('link', { name: 'Explorar el mapa' })).toHaveAttribute('href', '/mapa')
     expect(
       screen.getByText(
         'Elegí restaurantes con delivery sustentable y conocé el CO₂ estimado que evitás con cada pedido.',
@@ -208,167 +109,108 @@ describe('HomePage', () => {
     expect(screen.getByRole('button', { name: 'Abrir navegación' })).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('consulta las ubicaciones reales sin mostrar tarjetas, platos ni categorías', async () => {
-    fetchMock.mockResolvedValue(response({ message: 'OK', data }))
-    renderHome()
-    expect(screen.getByRole('status')).toHaveTextContent('Cargando restaurantes')
-    expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
-    expect(screen.getByText('1 local ubicado en el mapa')).toBeInTheDocument()
-    expect(screen.getByLabelText('Mapa de restaurantes')).toBeInTheDocument()
-    expect(screen.queryByText('Bowl de quinoa')).not.toBeInTheDocument()
-    expect(screen.queryByText(restaurant.address)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Bowls' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Verde Bowl' })).not.toBeInTheDocument()
-    expect(screen.getByText(data.howItWorks[0]!.description)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Explorar el mapa' })).toHaveAttribute('href', '#mapa')
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/home', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      body: undefined,
-    })
+  it('abre la página del mapa desde Inicio y carga solo los restaurantes del catálogo', async () => {
+    fetchMock.mockImplementation(async (url) =>
+      response({ data: String(url).endsWith('/api/home') ? data : data.restaurants }),
+    )
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+    await user.click(await screen.findByRole('link', { name: 'Explorar el mapa' }))
+    expect(await screen.findByRole('heading', { name: 'Elegí dónde comer' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Encontrá dónde comer.' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Mapa' })).toHaveAttribute('aria-current', 'page')
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/restaurantes', expect.any(Object)),
+    )
   })
-
-  it('excluye coordenadas ausentes, no finitas o fuera de rango', async () => {
+  it('muestra hasta seis platos sin repetir nombres y actualiza el precio y el menú', async () => {
+    const first = data.featuredDishes[0]!
     fetchMock.mockResolvedValue(
       response({
         data: {
           ...data,
-          restaurants: [
-            restaurant,
-            restaurantWithoutCoordinates,
-            { ...restaurant, id: 3, name: 'Local fuera de rango', latitude: 91 },
-            { ...restaurant, id: 4, name: 'Local inválido', longitude: 'no disponible' },
+          featuredDishes: [
+            first,
+            {
+              ...first,
+              id: 99,
+              name: '  BOWL   DE QUINOA  ',
+              restaurant: { ...restaurant, id: 99, name: 'Otro restaurante' },
+            },
+            ...Array.from({ length: 6 }, (_, index) => ({
+              ...first,
+              id: index + 2,
+              name: `Plato ${index + 2}`,
+              price: 9000 + index,
+              restaurant: { ...restaurant, id: index + 2, name: `Local ${index + 2}` },
+            })),
           ],
         },
       }),
     )
     renderHome()
-    expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Información de Local/ })).not.toBeInTheDocument()
-    expect(screen.getByText('1 local ubicado en el mapa')).toBeInTheDocument()
+    const section = screen.getByRole('region', { name: 'Tu próximo plato empieza acá.' })
+    await within(section).findByRole('heading', { name: first.name })
+    expect(section.querySelectorAll('.dish-carousel-slide')).toHaveLength(6)
+    expect(section.querySelector('[aria-label="Mostrar Plato 7"]')).toBeNull()
+    expect(section.querySelector('[aria-label="Mostrar   BOWL   DE QUINOA  "]')).toBeNull()
+    expect(within(section).getByText('$ 8.500')).toBeInTheDocument()
+    await userEvent.setup().click(within(section).getByRole('button', { name: 'Plato siguiente' }))
+    expect(within(section).getByRole('heading', { name: 'Plato 2' })).toBeInTheDocument()
+    expect(within(section).getByText('$ 9.000')).toBeInTheDocument()
+    expect(within(section).getByRole('link', { name: 'Ver menú de Local 2' })).toHaveAttribute(
+      'href',
+      '/restaurantes/2',
+    )
+    expect(screen.getByRole('heading', { name: 'Qué cambia con tu pedido' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Conocé cómo lo calculamos' })).toHaveAttribute(
+      'href',
+      '/como-calculamos-co2',
+    )
+    expect(screen.queryByText('Pedir rico y cuidar el planeta es igual de fácil')).not.toBeInTheDocument()
   })
 
-  it('abre información en el mapa y navega solo al pulsar Ver más', async () => {
-    fetchMock.mockResolvedValue(response({ data }))
-    renderHome()
-    fireEvent.click(await screen.findByRole('button', { name: 'Información de Verde Bowl' }), {
-      clientX: 600,
-      clientY: 400,
-    })
-    expect(screen.getByLabelText('Ruta actual')).toHaveTextContent('/')
-    expect(screen.getByText(restaurant.address)).toBeInTheDocument()
-    expect(screen.getByText(`Indicador ecológico: ${restaurant.ecoIndicator}`)).toBeInTheDocument()
-    expect(screen.getByText('Envase biodegradable')).toBeInTheDocument()
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('link', { name: 'Ver más de Verde Bowl' }))
-    expect(screen.getByLabelText('Ruta actual')).toHaveTextContent('/restaurantes?restaurante=1')
-  })
-
-  it('permite activar el marcador con Enter', async () => {
-    fetchMock.mockResolvedValue(response({ data }))
-    const user = userEvent.setup()
-    renderHome()
-    const marker = await screen.findByRole('button', { name: 'Información de Verde Bowl' })
-    act(() => marker.focus())
-    await user.keyboard('{Enter}')
-    expect(screen.getByLabelText('Ruta actual')).toHaveTextContent('/')
-    expect(screen.getByRole('link', { name: 'Ver más de Verde Bowl' })).toBeInTheDocument()
-    expect(screen.getByText(restaurant.address)).toBeInTheDocument()
-  })
-
-  it('envía el JWT al cargar las ubicaciones para una sesión activa', async () => {
-    authenticate()
+  it('muestra una alternativa si falla la fotografía de un plato', async () => {
     fetchMock.mockResolvedValue(
       response({
-        message: 'Datos obtenidos correctamente',
         data: {
           ...data,
-          userImpact: { co2SavedKg: 0 },
+          featuredDishes: [{ ...data.featuredDishes[0], imageUrl: 'https://example.com/plato.jpg' }],
         },
       }),
     )
     renderHome()
-    expect(await screen.findByLabelText('Mapa de restaurantes')).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/home',
-      expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: 'Bearer jwt-valido' }),
-      }),
-    )
+    const photo = await screen.findByRole('img', { name: 'Bowl de quinoa' })
+    fireEvent.error(photo)
+    expect(screen.queryByRole('img', { name: 'Bowl de quinoa' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Sin fotografía disponible')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ver menú de Verde Bowl' })).toBeInTheDocument()
   })
 
-  it('actualiza Home sin autenticación al cerrar sesión', async () => {
-    authenticate()
-    fetchMock.mockResolvedValueOnce(
-      response({
-        message: 'Datos obtenidos correctamente',
-        data: {
-          ...data,
-          userImpact: { co2SavedKg: 2.5 },
-        },
-      }),
-    )
-    fetchMock.mockResolvedValue(response({ message: 'Datos obtenidos correctamente', data }))
-    const user = userEvent.setup()
+  it('mantiene el acceso al catálogo mientras carga y cuando no hay platos', async () => {
+    fetchMock.mockResolvedValue(response({ data: { ...data, featuredDishes: [] } }))
     renderHome()
-    expect(await screen.findByLabelText('Mapa de restaurantes')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Mi cuenta' }))
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
-    expect(await screen.findByRole('button', { name: 'Información de Verde Bowl' })).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenLastCalledWith('http://localhost:3000/api/home', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      body: undefined,
-    })
-  })
-
-  it('muestra el error 401 de Home sin confundirlo con un catálogo vacío', async () => {
-    authenticate()
-    fetchMock.mockResolvedValue(
-      response(
-        {
-          error: {
-            code: 'INVALID_TOKEN',
-            message: 'Token inválido',
-            fields: {},
-          },
-        },
-        401,
-      ),
-    )
-    renderHome()
-    expect(await screen.findByRole('alert')).toHaveTextContent('Token inválido')
-    expect(screen.queryByText('Todavía no hay locales disponibles.')).not.toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-  })
-
-  it('muestra el estado vacío cuando la API devuelve listas vacías', async () => {
-    fetchMock.mockResolvedValue(
-      response({
-        message: 'Datos obtenidos correctamente',
-        data: {
-          userImpact: null,
-          categories: [],
-          restaurants: [],
-          featuredDishes: [],
-          howItWorks: [],
-        },
-      }),
-    )
-    renderHome()
-    expect(
-      await screen.findByText('Todavía no hay restaurantes con ubicación disponible.'),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando platos')
     expect(screen.getByRole('link', { name: 'Ver todos los restaurantes' })).toHaveAttribute(
       'href',
       '/restaurantes',
     )
+    expect(await screen.findByText(/No hay platos para mostrar/)).toBeInTheDocument()
   })
 
-  it('muestra los errores de conexión', async () => {
+  it('informa un error de carga sin esconder el acceso al catálogo', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
     renderHome()
-    expect(within(await screen.findByRole('alert')).getByText(/No pudimos conectarnos/)).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos conectarnos')
+    expect(screen.getByRole('link', { name: 'Ver todos los restaurantes' })).toHaveAttribute(
+      'href',
+      '/restaurantes',
+    )
   })
 })

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDown, ArrowUpRight, Bike, Leaf, ShoppingBag } from 'lucide-react'
+import { MapPin, ArrowDown, ArrowUpRight, Bike, Leaf } from 'lucide-react'
 import { SiteHeader } from '@/shared/components/SiteHeader'
 import { SiteFooter } from '@/shared/components/SiteFooter'
 import { ROUTES } from '@/shared/config/routes'
@@ -9,27 +9,13 @@ import avocado from '@/shared/assets/ingredient-avocado.webp'
 import tomato from '@/shared/assets/ingredient-tomato.webp'
 import leaf from '@/shared/assets/ingredient-leaf.webp'
 import { useHome } from '../hooks/useHome'
-import { RestaurantMap } from '../components/RestaurantMap'
+import { FeaturedDishes } from '../components/FeaturedDishes'
 
 const HomeMotion = lazy(() => import('../homeMotion').catch(() => ({ default: () => null })))
 
 export function HomePage() {
   const { data, loading, error } = useHome()
   const scope = useRef<HTMLDivElement>(null)
-  const restaurants = data?.restaurants ?? []
-  const steps = [
-    {
-      title: 'Elegí un local eco',
-      description: 'Explorá los restaurantes disponibles y conocé sus opciones.',
-      icon: ShoppingBag,
-    },
-    {
-      title: 'Pedí como siempre',
-      description: 'Armá tu pedido y confirmalo en un par de clics.',
-      icon: Bike,
-    },
-    { title: 'Mirá tu impacto', description: 'Conocé el CO₂ ahorrado con tus pedidos.', icon: Leaf },
-  ]
   return (
     <div ref={scope}>
       <Suspense fallback={null}>
@@ -37,7 +23,7 @@ export function HomePage() {
       </Suspense>
       <SiteHeader />
       <main>
-        <div className="home-portal" tabIndex={-1}>
+        <div className="home-discovery">
           <section className="home-hero" aria-labelledby="hero-title">
             <div className="hero-inner">
               <div className="hero-copy">
@@ -49,12 +35,12 @@ export function HomePage() {
                   pedido.
                 </p>
                 <div className="hero-actions hero-enter">
-                  <Link to={ROUTES.restaurants} className="eco-button">
-                    Ver restaurantes <ArrowUpRight size={20} aria-hidden="true" />
-                  </Link>
-                  <a href="#mapa" className="eco-button hero-map-button" data-map-link>
-                    Explorar el mapa <ArrowDown size={20} aria-hidden="true" />
+                  <a href="#opciones" className="eco-button" data-discover-link>
+                    Ver opciones <ArrowDown size={20} aria-hidden="true" />
                   </a>
+                  <Link to={ROUTES.map} className="eco-button hero-map-button">
+                    Explorar el mapa <MapPin size={20} aria-hidden="true" />
+                  </Link>
                 </div>
               </div>
               <div className="hero-art">
@@ -88,52 +74,33 @@ export function HomePage() {
               </div>
             </div>
           </section>
-          <section id="mapa" className="portal-map" tabIndex={-1} aria-label="Mapa de restaurantes">
-            <RestaurantMap restaurants={restaurants} loading={loading} error={error} />
-          </section>
+          <FeaturedDishes dishes={data?.featuredDishes ?? []} loading={loading} error={error} />
         </div>
-        <div className="values-strip" aria-label="Nuestra propuesta">
-          <span>COMIDA CON PROPÓSITO</span>
-          <Leaf aria-hidden="true" />
-          <span>SABOR QUE SUMA</span>
-          <Leaf aria-hidden="true" />
-          <span>PEQUEÑAS DECISIONES, GRAN CAMBIO</span>
-        </div>
-        <section className="how-section">
+        <section className="home-impact" aria-labelledby="home-impact-title">
           <div className="eco-section">
             <div className="section-heading">
-              <div>
-                <span className="eyebrow">ASÍ DE SIMPLE</span>
-                <h2>Pedir rico y cuidar el planeta es igual de fácil</h2>
-              </div>
+              <h2 id="home-impact-title">Qué cambia con tu pedido</h2>
             </div>
-            <div className="steps-grid">
-              {steps.map((step, index) => (
-                <article className="step-card" key={step.title}>
-                  <div className="step-top">
-                    <span>0{index + 1}</span>
-                    <step.icon size={30} aria-hidden="true" />
-                  </div>
-                  <h3>
-                    {index + 1}. {step.title}
-                  </h3>
-                  <p>{data?.howItWorks[index]?.description ?? step.description}</p>
-                </article>
-              ))}
+            <div className="home-impact-grid">
+              <article>
+                <Leaf size={28} aria-hidden="true" />
+                <h3>Envases identificados por local</h3>
+                <p>En cada restaurante podés consultar si utiliza envases biodegradables antes de elegir.</p>
+              </article>
+              <article>
+                <Bike size={28} aria-hidden="true" />
+                <h3>Una estimación del transporte</h3>
+                <p>
+                  Al confirmar tu destino, estimamos el CO₂ del traslado en bici frente a un auto a nafta. No
+                  representa la huella total de la comida ni confirma la cobertura de entrega.
+                </p>
+              </article>
             </div>
-          </div>
-        </section>
-        {typeof data?.communityImpact?.co2SavedKg === 'number' && (
-          <section className="community-banner">
-            <Leaf size={36} aria-hidden="true" />
-            <span className="eyebrow">CADA ELECCIÓN SUMA</span>
-            <h2>{data.communityImpact.co2SavedKg.toLocaleString('es-AR')} kg de CO₂</h2>
-            <p>Ahorrados entre quienes elegimos Ecobite.</p>
-            <Link to={ROUTES.methodology} className="eco-button">
+            <Link to={ROUTES.methodology} className="text-link">
               Conocé cómo lo calculamos <ArrowUpRight size={18} aria-hidden="true" />
             </Link>
-          </section>
-        )}
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </div>

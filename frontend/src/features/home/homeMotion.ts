@@ -6,26 +6,6 @@ gsap.registerPlugin(ScrollTrigger)
 
 function animateHome(scope: HTMLElement) {
   const media = gsap.matchMedia()
-  const stage = scope.querySelector<HTMLElement>('.home-portal')!
-  const hero = scope.querySelector<HTMLElement>('.home-hero')!
-  const map = scope.querySelector<HTMLElement>('.portal-map')!
-  const skip = scope.querySelector<HTMLAnchorElement>('[data-map-link]')!
-  const art = scope.querySelector<HTMLElement>('.hero-art')!
-  const setAvailable = (ready: boolean) => {
-    if (!ready && map.contains(document.activeElement)) stage.focus({ preventScroll: true })
-    map.inert = !ready
-    map.setAttribute('aria-hidden', String(!ready))
-    hero.inert = ready
-    hero.setAttribute('aria-hidden', String(ready))
-  }
-  const restore = () => {
-    stage.classList.remove('portal-is-pinned')
-    map.inert = false
-    hero.inert = false
-    map.removeAttribute('aria-hidden')
-    hero.removeAttribute('aria-hidden')
-  }
-
   media.add(
     '(prefers-reduced-motion: no-preference)',
     () => {
@@ -44,7 +24,6 @@ function animateHome(scope: HTMLElement) {
         clearProps: 'all',
         ease: 'power3.out',
       })
-      // Entry owns translation; scroll alone owns these elements' opacity.
       gsap.from('.ingredient, .hero-stamp', {
         y: 12,
         duration: 0.7,
@@ -52,122 +31,75 @@ function animateHome(scope: HTMLElement) {
         delay: 0.25,
         clearProps: 'transform',
       })
-      scope.querySelectorAll('.section-heading, .step-card').forEach((element) => {
-        gsap.from(element, {
-          y: 20,
-          opacity: 0,
-          duration: 0.5,
-          clearProps: 'all',
-          scrollTrigger: { trigger: element, start: 'top 92%', once: true },
-        })
-      })
     },
     scope,
   )
 
   media.add(
-    '(min-width: 768px) and (min-height: 601px) and (prefers-reduced-motion: no-preference)',
+    '(min-width: 1024px) and (min-height: 760px) and (prefers-reduced-motion: no-preference)',
     () => {
-      // Both scenes stay in normal flow until animation code has loaded successfully.
-      stage.classList.add('portal-is-pinned')
-      const origin = () => {
+      const stage = scope.querySelector<HTMLElement>('.home-discovery')!
+      const hero = scope.querySelector<HTMLElement>('.home-hero')!
+      const art = scope.querySelector<HTMLElement>('.hero-art')!
+      const featured = scope.querySelector<HTMLElement>('.home-featured')!
+      const discover = scope.querySelector<HTMLAnchorElement>('[data-discover-link]')!
+      stage.classList.add('is-animated')
+      const closed = () => {
         const frame = stage.getBoundingClientRect()
         const bowl = art.getBoundingClientRect()
-        return { x: bowl.left + bowl.width / 2 - frame.left, y: bowl.top + bowl.height / 2 - frame.top }
-      }
-      const closed = () => {
-        const { x, y } = origin()
-        return `circle(0px at ${x}px ${y}px)`
+        return `circle(0px at ${bowl.left + bowl.width / 2 - frame.left}px ${bowl.top + bowl.height / 2 - frame.top}px)`
       }
       const opened = () =>
         `circle(${Math.hypot(stage.clientWidth, stage.clientHeight)}px at ${stage.clientWidth / 2}px ${stage.clientHeight / 2}px)`
-      setAvailable(false)
       const timeline = gsap.timeline({
         defaults: { ease: 'none' },
         scrollTrigger: {
           trigger: stage,
           start: 'top top',
-          end: () => `+=${stage.clientHeight * 1.2}`,
+          end: () => `+=${stage.clientHeight}`,
           pin: true,
           scrub: true,
-          anticipatePin: 1,
           invalidateOnRefresh: true,
-          onUpdate: (self) => setAvailable(self.progress >= 0.95),
-          onRefresh: (self) => setAvailable(self.progress >= 0.95),
         },
       })
       timeline
         .fromTo(
           '.hero-copy, .ingredient, .hero-stamp, .hero-art-label',
-          { opacity: 1 },
-          { opacity: 0, duration: 0.25, immediateRender: false },
+          { autoAlpha: 1 },
+          { autoAlpha: 0, duration: 0.25, immediateRender: false },
           0,
         )
-        .fromTo(art, { scale: 1 }, { scale: 4.5, duration: 0.85, immediateRender: false }, 0)
-        .fromTo(map, { clipPath: closed }, { clipPath: opened, duration: 0.75 }, 0.15)
-        .set(map, { clipPath: 'none' }, 0.95)
-        .to({}, { duration: 0.05 })
+        .fromTo(art, { scale: 1 }, { scale: 4.5, duration: 0.8, immediateRender: false }, 0)
+        .fromTo(
+          featured,
+          { autoAlpha: 0, clipPath: closed },
+          { autoAlpha: 1, clipPath: opened, duration: 0.65 },
+          0.15,
+        )
+        .set(hero, { autoAlpha: 0 }, 0.8)
+        .set(featured, { clipPath: 'none' }, 0.8)
+        .to({}, { duration: 0.2 })
+      const finish = () => {
+        window.scrollTo({ top: timeline.scrollTrigger!.end, behavior: 'instant' })
+        timeline.progress(1)
+      }
       const enter = (event: Event) => {
         event.preventDefault()
-        const trigger = timeline.scrollTrigger!
-        window.scrollTo({ top: trigger.end, behavior: 'instant' })
-        timeline.progress(1)
-        setAvailable(true)
-        map.focus({ preventScroll: true })
+        finish()
+        featured.focus({ preventScroll: true })
       }
-      skip.addEventListener('click', enter)
-      // Browser history or a shared anchor can open directly on the map.
-      if (window.location.hash === '#mapa') enter(new Event('click'))
+      discover.addEventListener('click', enter)
+      featured.addEventListener('focusin', finish)
+      if (window.location.hash === '#opciones') enter(new Event('click'))
       return () => {
-        skip.removeEventListener('click', enter)
-        restore()
+        discover.removeEventListener('click', enter)
+        featured.removeEventListener('focusin', finish)
+        stage.classList.remove('is-animated')
       }
     },
     scope,
   )
 
-  media.add(
-    '(max-width: 767px) and (prefers-reduced-motion: no-preference), (max-height: 600px) and (prefers-reduced-motion: no-preference)',
-    () => {
-      const reveal = gsap.fromTo(
-        map,
-        { clipPath: 'circle(0% at 50% 35%)' },
-        {
-          clipPath: 'circle(150% at 50% 35%)',
-          duration: 0.45,
-          ease: 'power2.out',
-          clearProps: 'clipPath',
-          scrollTrigger: { trigger: map, start: 'top 85%', once: true },
-          onStart: () => {
-            map.inert = true
-          },
-          onComplete: () => {
-            map.inert = false
-          },
-        },
-      )
-      // Keyboard access must never wait for the reveal animation.
-      const enter = (event: Event) => {
-        event.preventDefault()
-        reveal.progress(1)
-        map.inert = false
-        map.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        map.focus({ preventScroll: true })
-      }
-      const focus = () => {
-        reveal.progress(1)
-        map.inert = false
-      }
-      skip.addEventListener('click', enter)
-      map.addEventListener('focusin', focus)
-      return () => {
-        skip.removeEventListener('click', enter)
-        map.removeEventListener('focusin', focus)
-        restore()
-      }
-    },
-    scope,
-  )
   let disposed = false
   let refreshFrame = 0
   const refresh = () => {
@@ -192,7 +124,6 @@ function animateHome(scope: HTMLElement) {
       image.removeEventListener('error', refresh)
     })
     media.revert()
-    restore()
   }
 }
 

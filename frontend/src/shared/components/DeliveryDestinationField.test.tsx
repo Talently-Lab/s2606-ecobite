@@ -4,7 +4,9 @@ import { DeliveryDestinationField } from './DeliveryDestinationField'
 import { claimOrderOwner, clearOrders, getOrders, setOrderDestination } from '../lib/orderDraft'
 import { requestCurrentPosition } from '@/features/home'
 vi.mock('react-leaflet', () => ({
-  MapContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  MapContainer: ({ children, ...props }: { children: React.ReactNode; 'aria-label': string }) => (
+    <div aria-label={props['aria-label']}>{children}</div>
+  ),
   Marker: () => null,
   TileLayer: () => null,
 }))
@@ -18,6 +20,18 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 describe('destino confirmado', () => {
+  it('carga el mapa solo al mostrar un destino confirmado y conserva el formulario', async () => {
+    const { rerender } = render(<DeliveryDestinationField showMap={false} />)
+    const address = screen.getByLabelText(/Buscar dirección/)
+    act(() => setOrderDestination({ latitude: 1, longitude: 2, label: 'Destino elegido' }))
+    expect(screen.queryByLabelText('Destino confirmado en el mapa')).not.toBeInTheDocument()
+    expect(screen.queryByText('Cargando mapa del destino…')).not.toBeInTheDocument()
+    rerender(<DeliveryDestinationField />)
+    expect(await screen.findByLabelText('Destino confirmado en el mapa')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Buscar dirección/)).toBe(address)
+    act(() => setOrderDestination(null))
+    expect(screen.queryByLabelText('Destino confirmado en el mapa')).not.toBeInTheDocument()
+  })
   it('busca solo por acción y exige seleccionar entre resultados ambiguos', async () => {
     fetchMock.mockResolvedValue(
       new Response(

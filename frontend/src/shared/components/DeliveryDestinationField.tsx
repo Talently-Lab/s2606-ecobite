@@ -1,16 +1,9 @@
-import { useId, useRef, useState } from 'react'
-import { MapContainer, Marker, TileLayer } from 'react-leaflet'
-import { divIcon } from 'leaflet'
+import { lazy, Suspense, useId, useRef, useState } from 'react'
 import { Button, Alert } from './ui'
 import { request } from '@/shared/lib/http'
 import { getOrders, setOrderDestination, useOrders, type DeliveryDestination } from '@/shared/lib/orderDraft'
 import { requestCurrentPosition } from '@/features/home'
-import 'leaflet/dist/leaflet.css'
-const icon = divIcon({
-  html: '<span aria-hidden="true">📍</span>',
-  className: 'destination-pin',
-  iconSize: [28, 28],
-})
+const DestinationMap = lazy(() => import('./DestinationMap'))
 export function DeliveryDestinationField({
   disabled = false,
   showMap = true,
@@ -130,25 +123,15 @@ export function DeliveryDestinationField({
             </p>
           )}
           {showMap && (
-            <MapContainer
-              key={`${destination.latitude},${destination.longitude}`}
-              center={[destination.latitude, destination.longitude]}
-              zoom={15}
-              scrollWheelZoom={false}
-              style={{ height: 150, width: '100%', zIndex: 0 }}
-              aria-label="Destino confirmado en el mapa"
+            <Suspense
+              fallback={
+                <p role="status" style={{ height: 150 }}>
+                  Cargando mapa del destino…
+                </p>
+              }
             >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Marker
-                position={[destination.latitude, destination.longitude]}
-                icon={icon}
-                alt={destination.label}
-                title={destination.label}
-              />
-            </MapContainer>
+              <DestinationMap destination={destination} />
+            </Suspense>
           )}
         </>
       ) : (

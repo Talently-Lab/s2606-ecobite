@@ -1,11 +1,10 @@
-import { ArrowRight, MapPin, Leaf } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { Alert, TextField } from '@/shared/components/ui'
-import { restaurantMenuUrl } from '@/shared/config/routes'
 import { catalogService } from './catalogService'
-import { CatalogLayout, FoodImage, LoadingState, RetryButton } from './catalogComponents'
+import { CatalogLayout, LoadingState, RetryButton } from './catalogComponents'
 import type { CatalogRestaurant } from './types'
+import { RestaurantList } from './RestaurantList'
 
 export function RestaurantCatalogPage() {
   const [params, setParams] = useSearchParams()
@@ -46,24 +45,6 @@ export function RestaurantCatalogPage() {
   }, [requestSearch, requestCategory, attempt, key])
   const current = result?.key === key ? result : null
   const restaurants = current?.data?.filter((restaurant) => selected === null || restaurant.id === selectedId)
-  const rawPage = params.get('pagina')
-  const requestedPage =
-    rawPage && /^[1-9]\d*$/.test(rawPage) && Number.isSafeInteger(Number(rawPage)) ? Number(rawPage) : 1
-  const pages = Math.max(1, Math.ceil((restaurants?.length ?? 0) / 9))
-  const page = selected === null ? Math.min(requestedPage, pages) : 1
-  const visibleRestaurants = restaurants?.slice((page - 1) * 9, page * 9)
-  useEffect(() => {
-    if (!current?.data || rawPage === null || (selected === null && rawPage === String(page))) return
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous)
-        if (page === 1) next.delete('pagina')
-        else next.set('pagina', String(page))
-        return next
-      },
-      { replace: true },
-    )
-  }, [current, rawPage, page, selected, setParams])
   const changeFilter = (field: string, value: string) =>
     setParams(
       (previous) => {
@@ -75,13 +56,6 @@ export function RestaurantCatalogPage() {
       },
       { replace: true },
     )
-  const changePage = (value: number) =>
-    setParams((previous) => {
-      const next = new URLSearchParams(previous)
-      if (value === 1) next.delete('pagina')
-      else next.set('pagina', String(value))
-      return next
-    })
   const clearSelection = () =>
     setParams((previous) => {
       const next = new URLSearchParams(previous)
@@ -133,87 +107,28 @@ export function RestaurantCatalogPage() {
           </label>
         </div>
       )}
-      {!current && <LoadingState text="Cargando restaurantes…" />}
-      {current?.error && (
-        <>
-          <Alert>{current.error}</Alert>
-          <RetryButton onClick={() => setAttempt((value) => value + 1)} />
-        </>
-      )}
-      {restaurants?.length === 0 && (
-        <p role="status" className="empty-state">
-          {selected !== null
-            ? 'El restaurante seleccionado no está disponible. Elegí «Ver todos» para explorar otros locales.'
-            : 'No encontramos restaurantes con estos filtros.'}
-        </p>
-      )}
-      <div className="catalog-grid grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleRestaurants?.map((restaurant) => (
-          <article key={restaurant.id} className="catalog-card space-y-3">
-            <FoodImage src={restaurant.imageUrl} alt={restaurant.name} />
-            <h2 className="font-display text-xl font-semibold">
-              <Link to={restaurantMenuUrl(restaurant.id)}>{restaurant.name}</Link>
-            </h2>
-            <p className="flex items-center gap-2 text-musgo">
-              <MapPin className="size-4 shrink-0" aria-hidden="true" />
-              {restaurant.address}
-            </p>
-            {restaurant.category && <p>{restaurant.category}</p>}
-            <p>Indicador ecológico: {restaurant.ecoIndicator}</p>
-            {restaurant.biodegradablePackaging && (
-              <p className="flex items-center gap-2 text-bosque">
-                <Leaf className="size-4" aria-hidden="true" />
-                Envase biodegradable
-              </p>
-            )}
-            {restaurant.rating !== null && <p>Valoración: {restaurant.rating}</p>}
-            {restaurant.estimatedDeliveryMinutes !== null && (
-              <p>Entrega estimada: {restaurant.estimatedDeliveryMinutes} min</p>
-            )}
-            <Link
-              className="inline-flex min-h-11 items-center gap-2 font-semibold underline"
-              to={restaurantMenuUrl(restaurant.id)}
-            >
-              Ver menú de {restaurant.name}
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </article>
-        ))}
-      </div>
-      {selected === null && restaurants && restaurants.length > 0 && (
-        <div className="space-y-3 pt-4">
-          <p role="status" className="text-sm text-musgo">
-            Mostrando {(page - 1) * 9 + 1}–{Math.min(page * 9, restaurants.length)} de {restaurants.length}{' '}
-            restaurantes
+      <div className="restaurant-results">
+        {!current && <LoadingState text="Cargando restaurantes…" />}
+        {current?.error && (
+          <>
+            <Alert>{current.error}</Alert>
+            <RetryButton onClick={() => setAttempt((value) => value + 1)} />
+          </>
+        )}
+        {restaurants?.length === 0 && (
+          <p role="status" className="empty-state">
+            {selected !== null
+              ? 'El restaurante seleccionado no está disponible. Elegí «Ver todos» para explorar otros locales.'
+              : 'No encontramos restaurantes con estos filtros.'}
           </p>
-          {pages > 1 && (
-            <nav
-              aria-label="Paginación de restaurantes"
-              className="flex flex-wrap items-center justify-center gap-4"
-            >
-              <button
-                type="button"
-                className="min-h-11 rounded-xl border border-borde px-4 disabled:opacity-40"
-                disabled={page === 1}
-                onClick={() => changePage(page - 1)}
-              >
-                Anterior
-              </button>
-              <span aria-live="polite">
-                Página {page} de {pages}
-              </span>
-              <button
-                type="button"
-                className="min-h-11 rounded-xl border border-borde px-4 disabled:opacity-40"
-                disabled={page === pages}
-                onClick={() => changePage(page + 1)}
-              >
-                Siguiente
-              </button>
-            </nav>
-          )}
-        </div>
-      )}
+        )}
+        {!!restaurants?.length && (
+          <RestaurantList
+            key={JSON.stringify([requestSearch, requestCategory, selected])}
+            restaurants={restaurants}
+          />
+        )}
+      </div>
     </CatalogLayout>
   )
 }

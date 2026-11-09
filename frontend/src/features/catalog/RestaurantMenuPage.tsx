@@ -1,13 +1,16 @@
-import { ArrowLeft, MapPin, Minus, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { ArrowLeft, Leaf, MapPin, Minus, Plus, Star } from 'lucide-react'
+import { useEffect, useLayoutEffect, useState } from 'react'
+import { Link, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { Alert, Button, TextField } from '@/shared/components/ui'
 import { useOrders, editDraft, changeDraftQuantity } from '@/shared/lib/orderDraft'
 import { ROUTES } from '@/shared/config/routes'
 import { loadMenu } from './menuCache'
 import { CatalogLayout, FoodImage, LoadingState, RetryButton } from './catalogComponents'
 import { formatPrice } from './formatPrice'
+import { RestaurantReviews } from './RestaurantReviews'
 import type { RestaurantMenu } from './types'
+
+const menuScrollPositions = new Map<string, number>()
 
 export function RestaurantMenuPage() {
   const { id } = useParams()
@@ -40,6 +43,16 @@ function RestaurantMenuContent({ id }: { id: string }) {
     }
   }, [id, validId, attempt])
   const data = result?.data
+  const navigationType = useNavigationType()
+  const restoreScroll = useLocation().state?.restoreMenuScroll === true
+  useLayoutEffect(() => {
+    if (!data) return
+    const top = navigationType === 'POP' || restoreScroll ? menuScrollPositions.get(id) : 0
+    if (top !== undefined) window.scrollTo({ top, behavior: 'instant' })
+    return () => {
+      menuScrollPositions.set(id, window.scrollY)
+    }
+  }, [data, id, navigationType, restoreScroll])
   const dishes = data?.dishes.filter((dish) => dish.available) ?? []
   const categories = [
     ...new Set(dishes.map((dish) => dish.category).filter((value): value is string => Boolean(value))),
@@ -74,43 +87,61 @@ function RestaurantMenuContent({ id }: { id: string }) {
       ) : null}
       {data && (
         <>
-          <section className="menu-banner space-y-3">
+          <header className="menu-banner">
+            <div className="min-w-0 space-y-2">
+              <h1 className="font-display font-semibold">{data.restaurant.name}</h1>
+              <p className="flex items-center gap-2 text-sm text-musgo">
+                <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                {data.restaurant.address}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-musgo">
+                {data.restaurant.biodegradablePackaging && (
+                  <span className="inline-flex items-center gap-1 text-bosque">
+                    <Leaf size={16} aria-hidden="true" /> Envase biodegradable
+                  </span>
+                )}
+                {data.restaurant.estimatedDeliveryMinutes !== null && (
+                  <span>Entrega estimada: {data.restaurant.estimatedDeliveryMinutes} min</span>
+                )}
+                <a href="#valoraciones" className="inline-flex min-h-11 items-center gap-1 underline">
+                  {data.restaurant.rating !== null && (
+                    <>
+                      <Star size={16} aria-hidden="true" />
+                      {data.restaurant.rating.toLocaleString('es-AR', { maximumFractionDigits: 1 })} / 5
+                      ·{' '}
+                    </>
+                  )}
+                  Ver reseñas
+                </a>
+              </div>
+            </div>
             <FoodImage src={data.restaurant.imageUrl} alt={data.restaurant.name} />
-            <p className="text-sm text-musgo">Menú del restaurante</p>
-            <h1 className="font-display text-3xl font-semibold">{data.restaurant.name}</h1>
-            <p className="flex items-center gap-2">
-              <MapPin className="size-4 shrink-0" aria-hidden="true" />
-              {data.restaurant.address}
-            </p>
-            <p>Indicador ecológico: {data.restaurant.ecoIndicator}</p>
-            {data.restaurant.biodegradablePackaging && <p className="text-bosque">Envase biodegradable</p>}
-            {data.restaurant.rating !== null && <p>Valoración: {data.restaurant.rating}</p>}
-            {data.restaurant.estimatedDeliveryMinutes !== null && (
-              <p>Entrega estimada: {data.restaurant.estimatedDeliveryMinutes} min</p>
-            )}
-          </section>
+          </header>
           <div className="min-w-0">
             <section aria-label="Platos del restaurante" className="min-w-0 space-y-4">
-              <TextField
-                label="Buscar platos"
-                type="search"
-                value={search}
-                onChange={(event) =>
-                  editDraft(Number(id), data.restaurant.name, { search: event.target.value })
-                }
-              />
-              <div className="flex flex-wrap gap-2" aria-label="Categorías de platos">
-                {['', ...categories].map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    aria-pressed={category === name}
-                    onClick={() => editDraft(Number(id), data.restaurant.name, { category: name })}
-                    className={`min-h-11 rounded-full border border-borde px-4 ${category === name ? 'bg-bosque text-white' : 'bg-white'}`}
-                  >
-                    {name || 'Todos'}
-                  </button>
-                ))}
+              <div className="menu-filters">
+                <TextField
+                  className="menu-search"
+                  label="Buscar platos"
+                  type="search"
+                  value={search}
+                  onChange={(event) =>
+                    editDraft(Number(id), data.restaurant.name, { search: event.target.value })
+                  }
+                />
+                <div className="flex flex-wrap gap-2" aria-label="Categorías de platos">
+                  {['', ...categories].map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-pressed={category === name}
+                      onClick={() => editDraft(Number(id), data.restaurant.name, { category: name })}
+                      className={`min-h-11 rounded-full border border-borde px-4 ${category === name ? 'bg-bosque text-white' : 'bg-white'}`}
+                    >
+                      {name || 'Todos'}
+                    </button>
+                  ))}
+                </div>
               </div>
               {dishes.length === 0 ? (
                 <p role="status">Este restaurante todavía no tiene platos disponibles.</p>
@@ -119,45 +150,51 @@ function RestaurantMenuContent({ id }: { id: string }) {
               ) : (
                 filtered.map((dish) => (
                   <article key={dish.id} className="dish-card">
-                    <h2 className="text-xl font-semibold">{dish.name}</h2>
                     <FoodImage src={dish.imageUrl} alt={dish.name} />
-                    {dish.category && <p className="text-musgo">{dish.category}</p>}
-                    <p>{formatPrice(dish.price)}</p>
-                    {(cart[dish.id] ?? 0) > 0 ? (
-                      <div className="quantity-picker" role="group" aria-label={`Cantidad de ${dish.name}`}>
-                        <button
+                    <div className="dish-details">
+                      <h2 className="font-semibold">{dish.name}</h2>
+                      {!category && dish.category && <p className="text-sm text-musgo">{dish.category}</p>}
+                      <p className="font-semibold">{formatPrice(dish.price)}</p>
+                    </div>
+                    <div className="dish-actions">
+                      {(cart[dish.id] ?? 0) > 0 ? (
+                        <div className="quantity-picker" role="group" aria-label={`Cantidad de ${dish.name}`}>
+                          <button
+                            type="button"
+                            disabled={!!orders.pending}
+                            aria-label={`Quitar una unidad de ${dish.name}`}
+                            onClick={() => changeQty(dish.id, -1)}
+                          >
+                            <Minus size={18} aria-hidden="true" />
+                          </button>
+                          <span aria-live="polite">{cart[dish.id]}</span>
+                          <button
+                            type="button"
+                            disabled={!!orders.pending || (cart[dish.id] ?? 0) >= 20}
+                            aria-label={`Agregar una unidad de ${dish.name}`}
+                            onClick={() => changeQty(dish.id, 1)}
+                          >
+                            <Plus size={18} aria-hidden="true" />
+                          </button>
+                        </div>
+                      ) : (
+                        <Button
                           type="button"
+                          className="px-4 py-2"
                           disabled={!!orders.pending}
-                          aria-label={`Quitar una unidad de ${dish.name}`}
-                          onClick={() => changeQty(dish.id, -1)}
-                        >
-                          <Minus size={18} aria-hidden="true" />
-                        </button>
-                        <span aria-live="polite">{cart[dish.id]}</span>
-                        <button
-                          type="button"
-                          disabled={!!orders.pending || (cart[dish.id] ?? 0) >= 20}
-                          aria-label={`Agregar una unidad de ${dish.name}`}
                           onClick={() => changeQty(dish.id, 1)}
+                          aria-label={`Agregar ${dish.name} al pedido`}
                         >
-                          <Plus size={18} aria-hidden="true" />
-                        </button>
-                      </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        disabled={!!orders.pending}
-                        onClick={() => changeQty(dish.id, 1)}
-                        aria-label={`Agregar ${dish.name} al pedido`}
-                      >
-                        <Plus size={18} aria-hidden="true" /> Agregar al pedido
-                      </Button>
-                    )}
+                          <Plus size={18} aria-hidden="true" /> Agregar
+                        </Button>
+                      )}
+                    </div>
                   </article>
                 ))
               )}
             </section>
           </div>
+          <RestaurantReviews restaurantId={Number(id)} />
         </>
       )}
     </CatalogLayout>

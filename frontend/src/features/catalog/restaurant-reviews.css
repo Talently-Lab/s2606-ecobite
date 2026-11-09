@@ -1,0 +1,68 @@
+.restaurant-reviews {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid #24402a20;
+  border-radius: 24px;
+  background: #fffdf7;
+  scroll-margin-top: 24px;
+}
+.rating-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  color: #5a6b5e;
+}
+.rating-summary svg,
+.restaurant-score svg {
+  color: #997026;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+.restaurant-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.restaurant-review-list {
+  display: grid;
+  gap: 16px;
+}
+.restaurant-review-list li {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid #24402a20;
+  padding-bottom: 16px;
+}
+.rating-form {
+  display: grid;
+  gap: 16px;
+}
+.rating-stars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rating-stars label {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: #997026;
+  cursor: pointer;
+}
+.rating-stars input:focus-visible + svg {
+  outline: 3px solid #087443;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.rating-stars input:disabled + svg {
+  opacity: 0.5;
+}
+
+.review-composer[open] > summary {
+  margin-bottom: 12px;
+}

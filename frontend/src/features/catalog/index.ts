@@ -1,5 +1,6 @@
 export { RestaurantCatalogPage } from './RestaurantCatalogPage'
+export { catalogService, withImage } from './catalogService'
 export { RestaurantMenuPage } from './RestaurantMenuPage'
 export { formatPrice } from './formatPrice'
-export { CatalogLayout, LoadingState } from './catalogComponents'
+export { CatalogLayout, FoodImage, LoadingState } from './catalogComponents'
 export { refreshCartMenus } from './menuCache'

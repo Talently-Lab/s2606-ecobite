@@ -14,3 +14,15 @@ export interface RestaurantMenu {
   restaurant: CatalogRestaurant
   dishes: CatalogDish[]
 }
+
+export interface RestaurantRating {
+  id: number
+  score: number
+  comment: string | null
+  createdAt: string
+}
+export interface RestaurantRatings {
+  averageScore: number
+  totalRatings: number
+  ratings: RestaurantRating[]
+}

@@ -1,9 +1,9 @@
 import { request, type ApiResult } from '@/shared/lib/http'
-import type { CatalogRestaurant, RestaurantMenu } from './types'
+import type { CatalogRestaurant, RestaurantMenu, RestaurantRating, RestaurantRatings } from './types'
 
 const IMAGES_BASE_URL = (import.meta.env.VITE_IMAGES_BASE_URL || '').replace(/\/+$/, '')
 
-function withImage<T extends { id: number; imageUrl: string | null }>(
+export function withImage<T extends { id: number; imageUrl?: string | null }>(
   item: T,
   folder: 'restaurants' | 'dishes',
 ): T {
@@ -14,6 +14,9 @@ function withImage<T extends { id: number; imageUrl: string | null }>(
 }
 
 export const catalogService = {
+  ratings: (id: number) => request<ApiResult<RestaurantRatings>>(`/restaurantes/${id}/valoraciones`),
+  createRating: (id: number, body: { score: number; comment: string | null }) =>
+    request<ApiResult<RestaurantRating>>(`/restaurantes/${id}/valoraciones`, { method: 'POST', body }),
   list: (search: string, categoria: string) => {
     const params = new URLSearchParams()
     if (search.trim()) params.set('search', search.trim())

@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Alert, Button, PasswordField, TextField } from '@/shared/components/ui'
+import { cartDrafts, useOrders } from '@/shared/lib/orderDraft'
 import { ROUTES } from '@/shared/config/routes'
 import { useForm } from '@/shared/hooks/useForm'
 import { AuthHeader } from '../components/AuthHeader'
@@ -14,6 +15,11 @@ export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const from = returnTo(useLocation().state)
+  const checkout = from.split('?')[0] === ROUTES.checkout
+  const orders = useOrders()
+  const drafts = cartDrafts(orders)
+  const restaurantId = Number(new URLSearchParams(from.split('?')[1]).get('restaurante'))
+  const draft = orders.drafts[restaurantId] ?? (drafts.length === 1 ? drafts[0] : undefined)
 
   const { values, formError, submitting, field, handleSubmit } = useForm<LoginValues>({
     initialValues: { email: '', password: '' },
@@ -26,8 +32,21 @@ export function LoginPage() {
   })
 
   return (
-    <AuthLayout intro="Ingresá para ver tu historial y seguir sumando CO₂ ahorrado en Mi impacto.">
-      <AuthHeader title="Hola de nuevo" subtitle="Ingresá para pedir y seguir sumando impacto." />
+    <AuthLayout
+      intro={
+        checkout
+          ? 'Tu selección se conserva mientras ingresás a tu cuenta.'
+          : 'Ingresá para ver tu historial y seguir sumando CO₂ ahorrado en Mi impacto.'
+      }
+    >
+      <AuthHeader
+        title={checkout ? `Continuá tu pedido${draft ? ` de ${draft.name}` : ''}` : 'Hola de nuevo'}
+        subtitle={
+          checkout
+            ? 'Iniciá sesión para revisar y pagar tu pedido.'
+            : 'Ingresá para pedir y seguir sumando impacto.'
+        }
+      />
 
       {formError && <Alert>{formError}</Alert>}
 

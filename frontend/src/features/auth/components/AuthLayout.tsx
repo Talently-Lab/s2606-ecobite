@@ -48,6 +48,14 @@ export function AuthLayout({ intro, extra, children }: AuthLayoutProps) {
 
       <main className="flex min-w-0 flex-[1_1_480px] items-center justify-center px-6 py-12">
         <div className="flex w-full max-w-110 flex-col gap-6">
+          {from.split('?')[0] === ROUTES.checkout && (
+            <Link
+              to={`${ROUTES.restaurants}?carrito=1`}
+              className="inline-flex min-h-11 items-center text-sm underline"
+            >
+              Volver al carrito
+            </Link>
+          )}
           <nav aria-label="Acceso" className="flex gap-1 rounded-full bg-arena p-1">
             <NavLink state={{ from }} to={ROUTES.login} className={tabClass}>
               Ingresar

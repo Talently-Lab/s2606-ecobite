@@ -35,7 +35,14 @@ export function RegisterPage() {
       intro="Con tu cuenta guardamos el CO₂ que ahorrás en cada pedido y lo vas viendo crecer en Mi impacto."
       extra={<RegisterBenefits />}
     >
-      <AuthHeader title="Creá tu cuenta" subtitle="Es gratis y te lleva menos de un minuto." />
+      <AuthHeader
+        title="Creá tu cuenta"
+        subtitle={
+          from.split('?')[0] === ROUTES.checkout
+            ? 'Después volverás a tu pedido para revisar y pagar.'
+            : 'Es gratis y te lleva menos de un minuto.'
+        }
+      />
 
       {formError && <Alert>{formError}</Alert>}
 

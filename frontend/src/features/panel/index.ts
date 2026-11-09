@@ -1,4 +1,14 @@
-export { CheckoutPage } from './pages/CheckoutPage'
-export { OrderConfirmationPage } from './pages/OrderConfirmationPage'
-export { ImpactPage } from './pages/ImpactPage'
-export { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { lazy } from 'react'
+
+export const CheckoutPage = lazy(() =>
+  import('./pages/CheckoutPage').then((module) => ({ default: module.CheckoutPage })),
+)
+export const OrderConfirmationPage = lazy(() =>
+  import('./pages/OrderConfirmationPage').then((module) => ({ default: module.OrderConfirmationPage })),
+)
+export const ImpactPage = lazy(() =>
+  import('./pages/ImpactPage').then((module) => ({ default: module.ImpactPage })),
+)
+export const AdminDashboardPage = lazy(() =>
+  import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })),
+)

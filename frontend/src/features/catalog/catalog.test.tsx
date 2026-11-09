@@ -206,8 +206,8 @@ describe('Catálogo, carrito agrupado y checkout', () => {
       name: `Local ${index + 1}`,
     }))
     const user = mount('/restaurantes')
-    expect(screen.getByText('Cargando restaurantes…')).toHaveAttribute('role', 'status')
-    await screen.findByRole('link', { name: 'Ver menú de Local 19' })
+    expect(screen.getByText('Cargando página…')).toHaveAttribute('role', 'status')
+    await screen.findByRole('link', { name: 'Ver menú de Local 19' }, { timeout: 3000 })
     expect(screen.getAllByRole('article')).toHaveLength(19)
     expect(screen.queryByRole('button', { name: 'Restaurante siguiente' })).not.toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Carrito' })).not.toBeInTheDocument()
@@ -374,8 +374,8 @@ describe('Catálogo, carrito agrupado y checkout', () => {
   it('pasa por registro y vuelve al checkout sin perder lo elegido', async () => {
     changeDraftQuantity(1, restaurant.name, 16, 1)
     const user = mount('/checkout')
-    await user.click(screen.getByRole('link', { name: 'Creá una gratis' }))
-    await user.type(screen.getByLabelText('Nombre y apellido'), 'Lucía')
+    await user.click(await screen.findByRole('link', { name: 'Creá una gratis' }))
+    await user.type(await screen.findByLabelText('Nombre y apellido'), 'Lucía')
     await user.type(screen.getByLabelText('Correo electrónico'), 'lucia@mail.com')
     await user.type(screen.getByLabelText('Contraseña', { exact: true }), 'verde2026bici')
     await user.type(screen.getByLabelText('Repetí la contraseña'), 'verde2026bici')

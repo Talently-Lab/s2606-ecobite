@@ -4,7 +4,8 @@ import { MapPin, ArrowDown, ArrowUpRight, Bike, Leaf } from 'lucide-react'
 import { SiteHeader } from '@/shared/components/SiteHeader'
 import { SiteFooter } from '@/shared/components/SiteFooter'
 import { ROUTES } from '@/shared/config/routes'
-import bowl from '@/shared/assets/hero-bowl.webp'
+import bowl from '@/shared/assets/hero-bowl-1000.webp'
+import smallBowl from '@/shared/assets/hero-bowl-480.webp'
 import avocado from '@/shared/assets/ingredient-avocado.webp'
 import tomato from '@/shared/assets/ingredient-tomato.webp'
 import leaf from '@/shared/assets/ingredient-leaf.webp'
@@ -51,6 +52,8 @@ export function HomePage() {
                 <img
                   className="hero-bowl"
                   src={bowl}
+                  srcSet={`${smallBowl} 480w, ${bowl} 1000w`}
+                  sizes="(max-width: 600px) min(87vw, 400px), (max-width: 1440px) 50vw, 672px"
                   alt="Bowl de vegetales frescos, quinoa y palta, imagen de marca Ecobite"
                   width="900"
                   height="900"

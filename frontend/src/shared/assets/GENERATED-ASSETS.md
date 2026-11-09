@@ -2,7 +2,9 @@
 
 Generadas con la herramienta integrada ImageGen el 2026-11-02 y exportadas a WebP conservando el canal alfa. Son imágenes decorativas de marca; no representan platos de restaurantes concretos. Los originales permanecen en el directorio de imágenes generadas de Codex.
 
-- `hero-bowl.webp`: 1000 × 1000; portada y panel de acceso.
+- `hero-bowl.webp`: original de 1000 × 1000 conservado como fuente.
+- `hero-bowl-1000.webp` y `hero-bowl-480.webp`: variantes optimizadas con alfa y calidad 82; portada adaptable y panel de acceso. El archivo anterior se conserva como fuente.
+- `logo-isotipo.webp` (104 × 120), `logo-wordmark.webp` (365 × 78) y `favicon.png` (28 × 32): derivados de los PNG oficiales para sus tamaños de presentación; los PNG originales se conservan como fuentes.
 - `ingredient-avocado.webp`: máximo 320 px; decoración de portada.
 - `ingredient-tomato.webp` y `ingredient-leaf.webp`: máximo 260 px; decoración de portada.
 

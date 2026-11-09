@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import bowl from '@/shared/assets/hero-bowl.webp'
+import bowl from '@/shared/assets/hero-bowl-480.webp'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from '@/shared/components/Logo'
 import { returnTo } from '../routes/returnTo'

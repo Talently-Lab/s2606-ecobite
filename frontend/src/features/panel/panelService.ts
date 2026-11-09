@@ -1,18 +1,16 @@
-import type { OrderInput, PendingConfirmation } from '@/shared/lib/orderDraft'
+import type { OrderInput } from '@/shared/lib/orderDraft'
 import { request, type ApiResult } from '@/shared/lib/http'
-import type { AdminDashboard, GroupQuote, GroupConfirmation, ConfirmationData } from './types'
+import type { AdminDashboard, CheckoutQuote, ConfirmationData } from './types'
 
 export const panelService = {
-  quoteGroup: (orders: OrderInput[]) =>
-    request<ApiResult<GroupQuote>>('/checkout/cotizar-grupo', { method: 'POST', body: { orders } }),
-  createGroup: ({ key, orders, expectedSubtotalCents }: PendingConfirmation) =>
-    request<ApiResult<GroupConfirmation>>('/pedidos/grupos', {
+  quote: (order: OrderInput) =>
+    request<ApiResult<CheckoutQuote>>('/checkout/cotizar', {
       method: 'POST',
-      body: { orders, expectedSubtotalCents },
-      idempotencyKey: key,
+      body: order,
+      signal: AbortSignal.timeout(15000),
     }),
-  groupConfirmation: (id: string) =>
-    request<ApiResult<GroupConfirmation>>(`/pedidos/grupos/${encodeURIComponent(id)}/confirmacion`),
+  createOrder: (order: OrderInput, reviewedQuote: CheckoutQuote) =>
+    request<ApiResult<ConfirmationData>>('/pedidos', { method: 'POST', body: { ...order, reviewedQuote } }),
   confirmation: (id: number) => request<ApiResult<ConfirmationData>>(`/pedidos/${id}/confirmacion`),
   dashboard: () => request<ApiResult<AdminDashboard>>('/admin/dashboard'),
 }

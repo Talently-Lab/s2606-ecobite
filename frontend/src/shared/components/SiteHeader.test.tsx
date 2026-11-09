@@ -25,14 +25,15 @@ beforeEach(() => {
 })
 
 describe('SiteHeader', () => {
-  it('muestra tres enlaces principales y la cuenta, sin CTA duplicado y con acceso al carrito vacío', () => {
+  it('incluye el mapa en la navegación y mantiene el acceso a la cuenta y al carrito vacío', () => {
     renderHeader()
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     expect(
       within(nav)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Inicio', 'Restaurantes', 'Nuestro impacto'])
+    ).toEqual(['Inicio', 'Restaurantes', 'Mapa', 'Nuestro impacto'])
+    expect(screen.getByRole('link', { name: 'Mapa' })).toHaveAttribute('href', '/mapa')
     expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page')
     expect(screen.queryByRole('link', { name: 'Explorar restaurantes' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ver carrito, 0 productos' })).toHaveAttribute(

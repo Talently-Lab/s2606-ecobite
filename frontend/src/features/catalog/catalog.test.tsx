@@ -1,10 +1,16 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/features/auth'
 import { AppRoutes } from '@/app/router'
-import { cartInputs, changeDraftQuantity, getOrders, claimOrderOwner } from '@/shared/lib/orderDraft'
+import {
+  cartInputs,
+  changeDraftQuantity,
+  getOrders,
+  claimOrderOwner,
+  setOrderDestination,
+} from '@/shared/lib/orderDraft'
 import type { OrderInput } from '@/shared/lib/orderDraft'
 import { clearMenuCache } from './menuCache'
 
@@ -43,37 +49,27 @@ let failure = 0
 let lostResponse = false
 let invalidSession = false
 let invalidLogin = false
-const groupId = '11111111-1111-4111-8111-111111111111'
-const confirmations = new Map<string, unknown>()
+const confirmations = new Map<number, unknown>()
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
-function quote(orders: OrderInput[]) {
-  const groups = orders.map((order) => {
-    const menu = menus[order.restaurantId]!
-    const items = order.items.map((item) => {
-      const product = menu.dishes.find((dish) => dish.id === item.dishId)!
-      return {
-        ...item,
-        name: product.name,
-        unitPrice: product.price,
-        subtotal: product.price * item.quantity,
-      }
-    })
-    return {
-      restaurantId: order.restaurantId,
-      restaurantName: menu.restaurant.name,
-      zone: order.zone,
-      items,
-      subtotal: items.reduce((sum, item) => sum + item.subtotal, 0),
-      deliveryFee: null,
-      total: null,
-      environmentalImpact: null,
-    }
+function quote(order: OrderInput) {
+  const menu = menus[order.restaurantId]!
+  const items = order.items.map((item) => {
+    const product = menu.dishes.find((dish) => dish.id === item.dishId)!
+    return { ...item, name: product.name, unitPrice: product.price, subtotal: product.price * item.quantity }
   })
   return {
-    groups,
-    subtotal: groups.reduce((sum, group) => sum + group.subtotal, 0),
+    restaurantId: order.restaurantId,
+    restaurantName: menu.restaurant.name,
+    zone: 'ruta',
+    destination: order.destination,
+    distanceKm: 2.5,
+    methodology: 'transport-170g-v1',
+    items,
+    subtotal: items.reduce((sum, item) => sum + item.subtotal, 0),
     deliveryFee: null,
     total: null,
+    environmentalImpact: { co2SavedKg: 0.43 },
+    requiresEnvironmentalRules: true,
   }
 }
 async function server(input: RequestInfo | URL, options?: RequestInit) {
@@ -84,53 +80,44 @@ async function server(input: RequestInfo | URL, options?: RequestInit) {
     return invalidLogin
       ? json({ message: 'Credenciales incorrectas' }, 401)
       : json({ user: currentUser, token: 'jwt' })
-  if (url.pathname.endsWith('/checkout/cotizar-grupo'))
-    return json({ data: quote(JSON.parse(String(options?.body)).orders) })
-  if (url.pathname.endsWith('/pedidos/grupos')) {
+  if (url.pathname.endsWith('/checkout/cotizar'))
+    return json({ data: quote(JSON.parse(String(options?.body))) })
+  if (url.pathname.endsWith('/pedidos')) {
     if (failure)
       return json(
-        { error: { message: failure === 401 ? 'Sesión vencida' : 'Error interno al crear el pedido' } },
+        { message: failure === 401 ? 'Sesión vencida' : 'Error interno al crear el pedido' },
         failure,
       )
-    const key = (options?.headers as Record<string, string>)['Idempotency-Key']!
-    const previous = confirmations.get(key)
-    if (previous) return json({ data: previous }, 201)
     const body = JSON.parse(String(options?.body))
-    const data = quote(body.orders)
-    if (Math.round(data.subtotal * 100) !== body.expectedSubtotalCents)
-      return json(
-        {
-          error: {
-            code: 'PRICE_CHANGED',
-            message: 'Los precios cambiaron. Revisá la cotización actualizada.',
-          },
-        },
-        409,
-      )
+    const data = quote(body)
+    if (JSON.stringify(body.reviewedQuote) !== JSON.stringify(data))
+      return json({ message: 'La cotización cambió. Revisá los valores actualizados.', quote: data }, 409)
+    const id = confirmations.size + 1
     const result = {
-      groupId,
-      date: '2026-11-02T12:00:00Z',
-      orders: data.groups.map((group, index) => ({
-        id: index + 1,
+      order: {
+        id,
         date: '2026-11-02T12:00:00Z',
         status: 'completed',
-        total: group.subtotal,
-        restaurant: { id: group.restaurantId, name: group.restaurantName },
-        items: group.items,
-      })),
-      subtotal: data.subtotal,
-      environmentalImpact: { co2SavedKg: 0.1 },
-      myImpact: { co2SavedKg: 0.1, ordersCount: data.groups.length },
+        total: data.subtotal,
+        zone: data.zone,
+        distanceKm: data.distanceKm,
+        restaurant: { id: data.restaurantId, name: data.restaurantName },
+        items: data.items.map((item) => ({ ...item, co2SavedKg: 0.05, packagingType: 'biodegradable' })),
+        environmentalImpact: { co2SavedKg: 0.1 },
+      },
+      myImpact: { co2SavedKg: 0.1, ordersCount: id },
     }
-    confirmations.set(key, result)
+    confirmations.set(id, result)
     if (lostResponse) {
       lostResponse = false
       throw new TypeError('Network disconnected')
     }
     return json({ data: result }, 201)
   }
-  if (url.pathname.includes('/pedidos/grupos/') && url.pathname.endsWith('/confirmacion'))
-    return json({ data: [...confirmations.values()][0] })
+  const confirmationId = url.pathname.match(/\/pedidos\/(\d+)\/confirmacion$/)?.[1]
+  if (confirmationId) return json({ data: confirmations.get(Number(confirmationId)) })
+  if (/\/restaurantes\/\d+\/valoraciones$/.test(url.pathname))
+    return json({ data: { averageScore: 0, totalRatings: 0, ratings: [] } })
   const id = url.pathname.match(/\/restaurantes\/(\d+)$/)?.[1]
   if (id)
     return menus[Number(id)]
@@ -172,7 +159,7 @@ function mount(path: string, authenticated = false) {
   return userEvent.setup()
 }
 function cart() {
-  return within(screen.getByRole('complementary', { name: 'Carrito' }))
+  return within(screen.queryByRole('dialog') ?? screen.getByRole('complementary', { name: 'Carrito' }))
 }
 async function signIn(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Correo electrónico'), 'lucia@mail.com')
@@ -180,6 +167,20 @@ async function signIn(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Ingresar' }))
 }
 beforeEach(() => {
+  setOrderDestination({ latitude: -34.6, longitude: -58.4, label: 'Destino de prueba' })
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+    configurable: true,
+    value() {
+      this.open = true
+    },
+  })
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+    configurable: true,
+    value() {
+      this.open = false
+      this.dispatchEvent(new Event('close'))
+    },
+  })
   restaurants = [restaurant, second]
   menus = { 1: { restaurant, dishes: [dish] }, 2: { restaurant: second, dishes: [secondDish] } }
   currentUser = usuario
@@ -190,6 +191,7 @@ beforeEach(() => {
   confirmations.clear()
   fetchMock.mockReset().mockImplementation(server)
   vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('scrollTo', vi.fn())
 })
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -197,56 +199,45 @@ afterEach(() => {
 })
 
 describe('Catálogo, carrito agrupado y checkout', () => {
-  it('pagina 19 locales de nueve en nueve sin repetir la consulta y conserva el historial', async () => {
+  it('muestra todos los locales sin controles de carrusel y permite filtrar', async () => {
     restaurants = Array.from({ length: 19 }, (_, index) => ({
       ...restaurant,
       id: index + 1,
       name: `Local ${index + 1}`,
     }))
     const user = mount('/restaurantes')
-    await screen.findByRole('link', { name: 'Local 1' })
-    expect(screen.getAllByRole('article')).toHaveLength(9)
-    expect(screen.getByText('Mostrando 1–9 de 19 restaurantes')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Siguiente' }))
-    expect(screen.getByRole('link', { name: 'Local 10' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Siguiente' }))
-    expect(screen.getAllByRole('article')).toHaveLength(1)
-    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'Historial atrás' }))
-    expect(screen.getByText('Página 2 de 3')).toBeInTheDocument()
+    expect(screen.getByText('Cargando restaurantes…')).toHaveAttribute('role', 'status')
+    await screen.findByRole('link', { name: 'Ver menú de Local 19' })
+    expect(screen.getAllByRole('article')).toHaveLength(19)
+    expect(screen.queryByRole('button', { name: 'Restaurante siguiente' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Carrito' })).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(cart().getByText('Tu carrito está vacío.')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Buscar restaurantes'), 'Local 19')
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1))
+    await user.selectOptions(screen.getByLabelText('Categoría'), 'Ensaladas')
+    await screen.findByText('No encontramos restaurantes con estos filtros.')
   })
-  it.each(['abc', '-1', '0', '10000'])('corrige pagina=%s y vuelve al inicio al filtrar', async (page) => {
-    restaurants = Array.from({ length: 10 }, (_, index) => ({
-      ...restaurant,
-      id: index + 1,
-      name: `Local ${index + 1}`,
-    }))
-    const user = mount(`/restaurantes?pagina=${page}`)
-    await screen.findByText(page === '10000' ? 'Página 2 de 2' : 'Página 1 de 2')
-    await user.selectOptions(screen.getByLabelText('Categoría'), 'Bowls')
-    expect(await screen.findByText('Página 1 de 2')).toBeInTheDocument()
-    expect(screen.getByLabelText('URL actual')).not.toHaveTextContent('pagina=')
-  })
-  it.each([0, 9, 10])('maneja el límite de nueve con %i restaurantes', async (count) => {
+  it.each([0, 1, 2, 10])('maneja un catálogo de %i restaurantes', async (count) => {
     restaurants = Array.from({ length: count }, (_, index) => ({
       ...restaurant,
       id: index + 1,
       name: `Local ${index + 1}`,
     }))
     mount('/restaurantes')
-    if (!count) await screen.findByText('No encontramos restaurantes con estos filtros.')
-    else await screen.findByRole('link', { name: 'Local 1' })
-    expect(screen.queryAllByRole('article')).toHaveLength(Math.min(9, count))
-    expect(screen.queryByRole('navigation', { name: 'Paginación de restaurantes' }) !== null).toBe(count > 9)
+    if (!count) {
+      await screen.findByText('No encontramos restaurantes con estos filtros.')
+      expect(screen.queryByRole('region', { name: 'Restaurantes' })).not.toBeInTheDocument()
+    } else {
+      await screen.findByRole('link', { name: 'Ver menú de Local 1' })
+      expect(screen.getAllByRole('article')).toHaveLength(count)
+    }
   })
   it('mantiene la selección del mapa y permite recuperar el catálogo', async () => {
     const user = mount('/restaurantes?restaurante=2&origen=mapa')
-    expect(await screen.findByRole('link', { name: 'Raíz Cocina' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Verde Bowl' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Ver menú de Raíz Cocina' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Ver menú de Verde Bowl' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ver todos' }))
-    expect(await screen.findByRole('link', { name: 'Verde Bowl' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Ver menú de Verde Bowl' })).toBeInTheDocument()
     expect(screen.getByLabelText('URL actual')).toHaveTextContent('origen=mapa')
   })
   it.each(['999', '0', '-1', 'abc', '1.5', '9007199254740992', ''])(
@@ -256,6 +247,24 @@ describe('Catálogo, carrito agrupado y checkout', () => {
       expect(await screen.findByText(/El restaurante seleccionado no está disponible/)).toBeInTheDocument()
     },
   )
+  it('identifica el restaurante, conserva los filtros y muestra el acceso móvil al agregar', async () => {
+    menus[1]!.dishes.push({ ...dish, id: 17, name: 'Ensalada de temporada', category: 'Ensaladas' })
+    const user = mount('/restaurantes/1')
+    await screen.findByRole('heading', { name: 'Verde Bowl' })
+    expect(screen.getByRole('link', { name: 'Ver reseñas' })).toHaveAttribute('href', '#valoraciones')
+    expect(screen.queryByText('Menú del restaurante')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ver carrito' })).not.toBeInTheDocument()
+    expect(await cart().findByRole('heading', { name: 'Tu pedido de Verde Bowl' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ensaladas' }))
+    expect(screen.queryByRole('heading', { name: 'Bowl quinoa' })).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Buscar platos'), 'temporada')
+    await user.click(screen.getByRole('button', { name: 'Agregar Ensalada de temporada al pedido' }))
+    expect(screen.getByRole('button', { name: 'Ver carrito' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Cantidad de Ensalada de temporada' })).toHaveTextContent('1')
+    await user.click(screen.getByRole('button', { name: 'Todos' }))
+    await user.clear(screen.getByLabelText('Buscar platos'))
+    expect(screen.getByRole('heading', { name: 'Bowl quinoa' })).toBeInTheDocument()
+  })
   it('permite agregar sin sesión y muestra cantidades sincronizadas en tarjeta y carrito', async () => {
     const user = mount('/restaurantes/1')
     await user.click(await screen.findByRole('button', { name: 'Agregar Bowl quinoa al pedido' }))
@@ -269,33 +278,98 @@ describe('Catálogo, carrito agrupado y checkout', () => {
     expect(picker).toHaveTextContent('1')
     expect(screen.queryByLabelText('Correo electrónico')).not.toBeInTheDocument()
   })
-  it('conserva el carrito en catálogo y otros menús y añade otro restaurante sin reemplazar nada', async () => {
+  it('aísla el carrito de cada menú y conserva los demás al cambiar de restaurante', async () => {
     const user = mount('/restaurantes/1')
     await user.click(await screen.findByRole('button', { name: 'Agregar Bowl quinoa al pedido' }))
     await user.click(screen.getByRole('link', { name: 'Volver a restaurantes' }))
-    await screen.findByRole('link', { name: 'Raíz Cocina' })
-    expect(cart().getByText('Bowl quinoa')).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: 'Raíz Cocina' }))
+    await screen.findByRole('link', { name: 'Ver menú de Raíz Cocina' })
+    await user.click(screen.getByRole('link', { name: 'Ver menú de Raíz Cocina' }))
     await screen.findByRole('heading', { name: 'Raíz Cocina' })
-    expect(cart().getByText('Bowl quinoa')).toBeInTheDocument()
+    expect(cart().queryByText('Bowl quinoa')).not.toBeInTheDocument()
+    expect(cart().getByText('Agregá un plato para empezar.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ver carrito, 0 productos' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Agregar Bowl vegetal al pedido' }))
     expect(cartInputs(getOrders())).toHaveLength(2)
-    expect(cart().getByRole('button', { name: /^Raíz Cocina/ })).toHaveAttribute('aria-expanded', 'true')
-    await user.click(cart().getByRole('button', { name: /^Verde Bowl/ }))
+    expect(cart().getByText('Bowl vegetal')).toBeInTheDocument()
+    expect(cart().queryByText('Bowl quinoa')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ver carrito, 1 producto' })).toBeInTheDocument()
+    await user.click(cart().getByRole('link', { name: 'Ver mis otros carritos' }))
+    expect(await screen.findByRole('dialog', { name: 'Tus carritos' })).toBeInTheDocument()
+    expect(cart().getByRole('button', { name: 'Revisar carrito de Raíz Cocina' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(
+      cart().queryByRole('button', { name: /^(Revisar pedido de|Iniciar sesión para continuar con)/ }),
+    ).not.toBeInTheDocument()
+    await user.click(cart().getByRole('button', { name: 'Revisar carrito de Verde Bowl' }))
     expect(cart().getByText('Bowl quinoa')).toBeVisible()
-    expect(cart().getAllByRole('button', { name: 'Ir a pagar' })).toHaveLength(1)
+    expect(
+      cart().getAllByRole('button', { name: /^(Revisar pedido de|Iniciar sesión para continuar con)/ }),
+    ).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Ver carrito, 2 productos' })).toBeInTheDocument()
+  })
+  it('quita solo el carrito elegido y actualiza el resumen', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 2)
+    changeDraftQuantity(2, second.name, 20, 1)
+    const user = mount('/restaurantes')
+    expect(screen.getByText('2 carritos · 3 productos')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ver carritos' }))
+    await user.click(cart().getByRole('button', { name: 'Revisar carrito de Verde Bowl' }))
+    await user.click(cart().getByRole('button', { name: 'Quitar carrito de Verde Bowl' }))
+    expect(cartInputs(getOrders())).toHaveLength(1)
+    expect(getOrders().drafts[2]?.items[20]).toBe(1)
+    await user.click(screen.getByRole('button', { name: 'Cerrar carrito' }))
+    expect(screen.getByText('1 carrito · 1 producto')).toBeInTheDocument()
+  })
+  it('permite reintentar los precios sin desplegar un carrito y bloquea continuar si fallan', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    let menuFailed = true
+    fetchMock.mockImplementation((input, options) =>
+      menuFailed && new URL(String(input)).pathname.endsWith('/restaurantes/1')
+        ? Promise.resolve(json({ message: 'Sin conexión' }, 503))
+        : server(input, options),
+    )
+    const user = mount('/restaurantes')
+    await user.click(screen.getByRole('button', { name: 'Ver carritos' }))
+    await cart().findByRole('alert')
+    expect(cart().getByRole('button', { name: 'Revisar carrito de Verde Bowl' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    await user.click(cart().getByRole('button', { name: 'Revisar carrito de Verde Bowl' }))
+    expect(
+      cart().getByRole('button', { name: 'Iniciar sesión para continuar con Verde Bowl' }),
+    ).toBeDisabled()
+    await user.click(cart().getByRole('button', { name: 'Revisar carrito de Verde Bowl' }))
+    menuFailed = false
+    await user.click(cart().getByRole('button', { name: 'Reintentar' }))
+    await waitFor(() => expect(cart().queryByRole('alert')).not.toBeInTheDocument())
+    await user.click(cart().getByRole('button', { name: 'Revisar carrito de Verde Bowl' }))
+    expect(cart().getByRole('button', { name: 'Iniciar sesión para continuar con Verde Bowl' })).toBeEnabled()
   })
   it('solicita login solo al ir a pagar y conserva los dos restaurantes', async () => {
     changeDraftQuantity(1, restaurant.name, 16, 2)
     changeDraftQuantity(2, second.name, 20, 1)
     const user = mount('/restaurantes')
-    await user.click(await cart().findByRole('button', { name: 'Ir a pagar' }))
+    await user.click(screen.getByRole('button', { name: 'Ver carritos' }))
+    await user.click(cart().getByRole('button', { name: 'Revisar carrito de Verde Bowl' }))
+    await user.click(
+      await cart().findByRole('button', { name: 'Iniciar sesión para continuar con Verde Bowl' }),
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Continuá tu pedido de Verde Bowl' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Volver al carrito' })).toHaveAttribute(
+      'href',
+      '/restaurantes?carrito=1',
+    )
     await signIn(user)
     expect(await screen.findByText('2 × Bowl quinoa')).toBeInTheDocument()
-    expect(screen.getByText('1 × Bowl vegetal')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Confirmar pedidos' })).toBeInTheDocument()
-    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/pedidos/grupos'))).toHaveLength(0)
+    expect(screen.queryByText('1 × Bowl vegetal')).not.toBeInTheDocument()
+    expect(getOrders().drafts[2]?.items[20]).toBe(1)
+    expect(screen.getByRole('button', { name: /^Pagar / })).toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/pedidos'))).toHaveLength(0)
   })
   it('pasa por registro y vuelve al checkout sin perder lo elegido', async () => {
     changeDraftQuantity(1, restaurant.name, 16, 1)
@@ -313,7 +387,7 @@ describe('Catálogo, carrito agrupado y checkout', () => {
     invalidLogin = true
     const user = mount('/restaurantes/1')
     await user.click(await screen.findByRole('button', { name: 'Agregar Bowl quinoa al pedido' }))
-    await user.click(cart().getByRole('button', { name: 'Ir a pagar' }))
+    await user.click(cart().getByRole('button', { name: 'Iniciar sesión para continuar con Verde Bowl' }))
     await signIn(user)
     await screen.findByRole('alert')
     expect(getOrders().drafts[1]?.items[16]).toBe(1)
@@ -331,34 +405,247 @@ describe('Catálogo, carrito agrupado y checkout', () => {
     expect(screen.getByLabelText('Buscar platos')).toHaveValue('quinoa')
     expect(cart().getByText('Bowl quinoa')).toBeInTheDocument()
   })
-  it('una confirmación crea el conjunto, vacía lo confirmado y muestra el resumen agrupado', async () => {
+  it('permite mantener platos sin destino pero bloquea cotización y pago', async () => {
+    setOrderDestination(null)
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    mount('/checkout', true)
+    await screen.findByText(/Elegí un destino para estimar el recorrido y la entrega/)
+    expect(screen.getByRole('button', { name: 'Indicá el destino para continuar' })).toBeDisabled()
+    expect(screen.getByText('Primero, indicá dónde querés recibir tu pedido')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Indicar destino de entrega' })).toHaveAttribute(
+      'href',
+      '#checkout-destination',
+    )
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/checkout/cotizar'))).toHaveLength(0)
+    expect(getOrders().drafts[1]?.items[16]).toBe(1)
+  })
+  it('al cambiar destino bloquea el pago hasta recibir otra cotización sin modificar platos', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    mount('/checkout', true)
+    await screen.findByRole('button', { name: 'Pagar $ 4.500' })
+    let finish!: () => void
+    fetchMock.mockImplementation((url, options) =>
+      String(url).endsWith('/checkout/cotizar')
+        ? new Promise((resolve) => {
+            finish = () => {
+              void server(url, options).then(resolve)
+            }
+          })
+        : server(url, options),
+    )
+    act(() => setOrderDestination({ latitude: 2, longitude: 3, label: 'Destino nuevo' }))
+    expect(screen.getByRole('button', { name: 'Actualizando precios…' })).toBeDisabled()
+    expect(getOrders().drafts[1]?.items[16]).toBe(1)
+    await act(async () => finish())
+    expect(await screen.findByRole('button', { name: 'Pagar $ 4.500' })).toBeEnabled()
+    expect(screen.getByText('Destino confirmado: Destino nuevo')).toBeInTheDocument()
+  })
+  it('distingue un fallo de cotización de una carga y permite reintentar sin perder el destino', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    fetchMock.mockImplementation((url, options) =>
+      String(url).endsWith('/checkout/cotizar')
+        ? Promise.resolve(json({ message: 'No pudimos calcular el recorrido de entrega.' }, 503))
+        : server(url, options),
+    )
+    const user = mount('/checkout', true)
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos calcular el recorrido')
+    expect(screen.getByRole('button', { name: 'No pudimos calcular la entrega' })).toBeDisabled()
+    expect(screen.queryByText('Calculando recorrido, precios y disponibilidad…')).not.toBeInTheDocument()
+    fetchMock.mockImplementation(server)
+    await user.click(screen.getByRole('button', { name: 'Reintentar cotización' }))
+    expect(await screen.findByRole('button', { name: 'Pagar $ 4.500' })).toBeEnabled()
+    expect(getOrders().destination?.label).toBe('Destino de prueba')
+  })
+  it('recotiza una prueba de entrega vencida y permite confirmar de nuevo sin perder productos', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    const user = mount('/checkout', true)
+    const pay = await screen.findByRole('button', { name: 'Pagar $ 4.500' })
+    fetchMock.mockImplementation((url, options) =>
+      String(url).endsWith('/pedidos')
+        ? Promise.resolve(json({ message: 'El cálculo de entrega venció o no es válido.' }, 409))
+        : server(url, options),
+    )
+    await user.click(pay)
+    expect(await screen.findByRole('alert')).toHaveTextContent('El cálculo de entrega venció')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pagar $ 4.500' })).toBeEnabled())
+    expect(getOrders().pending).toBeNull()
+    expect(getOrders().drafts[1]?.items[16]).toBe(1)
+    fetchMock.mockImplementation(server)
+    await user.click(screen.getByRole('button', { name: 'Pagar $ 4.500' }))
+    expect(await screen.findByRole('heading', { name: '¡Pedido confirmado!' })).toBeInTheDocument()
+    expect(confirmations.size).toBe(1)
+  })
+  it('paga sin completar la tarjeta y conserva el otro carrito con el mismo importe confirmado', async () => {
     changeDraftQuantity(1, restaurant.name, 16, 2)
     changeDraftQuantity(2, second.name, 20, 1)
-    const user = mount('/checkout', true)
-    await user.click(await screen.findByRole('button', { name: 'Confirmar pedidos' }))
-    expect(await screen.findByRole('heading', { name: '¡Pedidos confirmados!' })).toBeInTheDocument()
-    expect(cartInputs(getOrders())).toEqual([])
+    const user = mount('/checkout?restaurante=1', true)
+    await screen.findByText('2 × Bowl quinoa')
+    expect(screen.getByText('Sin cargo en esta demo')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pagar $ 9.000' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Pagar / }))
+    expect(await screen.findByRole('heading', { name: '¡Pedido confirmado!' })).toBeInTheDocument()
+    expect(screen.getByText('Distancia del recorrido: 2,5 km')).toBeInTheDocument()
+    expect(screen.queryByText(/Pedido histórico/)).not.toBeInTheDocument()
+    expect(cartInputs(getOrders())).toHaveLength(1)
+    expect(getOrders().drafts[1]).toBeUndefined()
+    expect(getOrders().drafts[2]?.items[20]).toBe(1)
     expect(confirmations.size).toBe(1)
-    expect(screen.getByRole('heading', { name: 'Verde Bowl' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Raíz Cocina' })).toBeInTheDocument()
+    const requests = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/pedidos'))
+    expect(JSON.parse(String(requests[0]![1]!.body))).toEqual({
+      restaurantId: 1,
+      destination: { latitude: -34.6, longitude: -58.4, label: 'Destino de prueba' },
+      reviewedQuote: expect.objectContaining({ distanceKm: 2.5, environmentalImpact: { co2SavedKg: 0.43 } }),
+      items: [{ dishId: 16, quantity: 2 }],
+    })
+    expect(screen.getByText('Importe confirmado (ARS)').parentElement).toHaveTextContent('$ 9.000')
+    expect(screen.getByText('Pago simulado aprobado · Tarjeta')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Valorar este restaurante' })).toHaveAttribute(
+      'href',
+      '/restaurantes/1#valoraciones',
+    )
   })
-  it('recupera una respuesta perdida con el mismo identificador incluso después de recargar', async () => {
+  it('acepta datos arbitrarios de tarjeta sin enviarlos ni guardarlos y evita doble pedido', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    const user = mount('/checkout', true)
+    const pay = await screen.findByRole('button', { name: 'Pagar $ 4.500' })
+    await user.type(screen.getByLabelText('Número de tarjeta'), 'tarjeta ficticia')
+    await user.type(screen.getByLabelText('Vencimiento'), 'sin fecha')
+    await user.type(screen.getByLabelText('Código de seguridad'), 'cualquier cosa')
+    await user.type(screen.getByLabelText('Nombre del titular'), 'Titular de prueba')
+    await user.dblClick(pay)
+    await screen.findByRole('heading', { name: '¡Pedido confirmado!' })
+    expect(confirmations.size).toBe(1)
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/pedidos'))).toHaveLength(1)
+    const sent = JSON.stringify(fetchMock.mock.calls)
+    const stored = JSON.stringify([Object.values(localStorage), Object.values(sessionStorage)])
+    for (const value of ['tarjeta ficticia', 'sin fecha', 'cualquier cosa', 'Titular de prueba']) {
+      expect(sent).not.toContain(value)
+      expect(stored).not.toContain(value)
+    }
+  })
+  it('permite cancelar PayPal sin crear pedido y autorizar después sin credenciales', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    changeDraftQuantity(2, second.name, 20, 1)
+    const user = mount('/checkout?restaurante=1', true)
+    await screen.findByRole('button', { name: 'Pagar $ 4.500' })
+    await user.click(screen.getByRole('radio', { name: 'PayPal' }))
+    expect(screen.queryByLabelText('Número de tarjeta')).not.toBeInTheDocument()
+    const next = screen.getByRole('button', { name: 'Continuar con PayPal' })
+    await user.click(next)
+    const dialog = screen.getByRole('dialog', { name: 'Autorizá tu pago a EcoBite' })
+    expect(within(dialog).getByText('Verde Bowl')).toBeInTheDocument()
+    expect(within(dialog).getByText('$ 4.500 ARS')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Volver al pedido' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(next).toHaveFocus()
+    expect(confirmations.size).toBe(0)
+    await user.click(next)
+    await user.dblClick(screen.getByRole('button', { name: 'Autorizar pago' }))
+    await screen.findByRole('heading', { name: '¡Pedido confirmado!' })
+    expect(screen.getByText('Pago simulado aprobado · PayPal')).toBeInTheDocument()
+    expect(confirmations.size).toBe(1)
+    expect(getOrders().drafts[2]?.items[20]).toBe(1)
+  })
+  it('mantiene pago y resumen durante la cotización y el envío del pedido', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    let finishQuote: () => void = () => {}
+    let finishOrder: () => void = () => {}
+    fetchMock.mockImplementation((input, options) => {
+      if (String(input).endsWith('/checkout/cotizar')) {
+        return new Promise((resolve) => {
+          finishQuote = () => {
+            void server(input, options).then(resolve)
+          }
+        })
+      }
+      if (String(input).endsWith('/pedidos')) {
+        return new Promise((resolve) => {
+          finishOrder = () => {
+            void server(input, options).then(resolve)
+          }
+        })
+      }
+      return server(input, options)
+    })
+    const user = mount('/checkout', true)
+    const summary = await screen.findByRole('complementary', { name: 'Tu pedido de Verde Bowl' })
+    const number = screen.getByLabelText('Número de tarjeta')
+    expect(number).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Actualizando precios…' })).toBeDisabled()
+    await act(async () => {
+      finishQuote()
+    })
+    const pay = await screen.findByRole('button', { name: 'Pagar $ 4.500' })
+    expect(screen.getByRole('complementary', { name: 'Tu pedido de Verde Bowl' })).toBe(summary)
+    expect(screen.getByLabelText('Número de tarjeta')).toBe(number)
+    await user.type(number, 'dato ficticio')
+    await user.click(pay)
+    expect(screen.getByRole('button', { name: 'Procesando pago…' })).toBeDisabled()
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/pedidos'))).toHaveLength(1),
+    )
+    expect(screen.getByRole('complementary', { name: 'Tu pedido de Verde Bowl' })).toBe(summary)
+    expect(screen.getByLabelText('Número de tarjeta')).toBe(number)
+    expect(number).toHaveValue('dato ficticio')
+    expect(number).toBeDisabled()
+    await act(async () => {
+      finishOrder()
+    })
+    await screen.findByRole('heading', { name: '¡Pedido confirmado!' })
+  })
+  it('entra al checkout arriba y vuelve a la posición guardada del menú', async () => {
+    const user = mount('/restaurantes/1', true)
+    await user.click(await screen.findByRole('button', { name: 'Agregar Bowl quinoa al pedido' }))
+    vi.stubGlobal('scrollY', 420)
+    await user.click(cart().getByRole('button', { name: 'Revisar pedido de Verde Bowl' }))
+    await screen.findByRole('button', { name: 'Pagar $ 4.500' })
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'instant' })
+    vi.stubGlobal('scrollY', 0)
+    await user.click(screen.getByRole('link', { name: 'Volver al menú' }))
+    await screen.findByRole('heading', { name: 'Verde Bowl' })
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 420, behavior: 'instant' })
+  })
+  it('no mezcla carritos al entrar al checkout sin restaurante', async () => {
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    changeDraftQuantity(2, second.name, 20, 1)
+    mount('/checkout', true)
+    expect(
+      await screen.findByText('Elegí un restaurante desde el carrito para confirmar su pedido por separado.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Pagar / })).not.toBeInTheDocument()
+  })
+  it('no reenvía una confirmación de resultado incierto ni siquiera después de recargar', async () => {
     lostResponse = true
     changeDraftQuantity(1, restaurant.name, 16, 2)
     const user = mount('/checkout', true)
-    await user.click(await screen.findByRole('button', { name: 'Confirmar pedidos' }))
-    await screen.findByRole('alert')
-    const original = getOrders().pending!
-    expect(original).not.toBeNull()
+    await user.click(await screen.findByRole('button', { name: /^Pagar / }))
+    await screen.findByRole('region', { name: 'Confirmación pendiente' })
+    expect(getOrders().pending).not.toBeNull()
+    expect(screen.getByRole('alert')).toHaveTextContent('No pudimos conectarnos')
     cleanup()
-    const reloaded = mount('/checkout', true)
-    await reloaded.click(await screen.findByRole('button', { name: 'Recuperar confirmación' }))
-    expect(await screen.findByRole('heading', { name: '¡Pedidos confirmados!' })).toBeInTheDocument()
-    const requests = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/pedidos/grupos'))
-    expect(requests).toHaveLength(2)
-    expect((requests[0]![1]!.headers as Record<string, string>)['Idempotency-Key']).toBe(
-      (requests[1]![1]!.headers as Record<string, string>)['Idempotency-Key'],
-    )
+    mount('/checkout', true)
+    await screen.findByRole('region', { name: 'Confirmación pendiente' })
+    expect(screen.getByRole('button', { name: 'Habilitar un nuevo intento' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /^Pagar / })).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/pedidos'))).toHaveLength(1)
+    expect(confirmations.size).toBe(1)
+  })
+  it('habilita otro intento solo después de verificar que el pedido no se creó', async () => {
+    failure = 500
+    changeDraftQuantity(1, restaurant.name, 16, 1)
+    const user = mount('/checkout', true)
+    await user.click(await screen.findByRole('button', { name: /^Pagar / }))
+    await screen.findByRole('region', { name: 'Confirmación pendiente' })
+    expect(screen.getByRole('button', { name: 'Habilitar un nuevo intento' })).toBeDisabled()
+    expect(confirmations.size).toBe(0)
+    expect(screen.getByRole('alert')).toHaveTextContent('Error interno al crear el pedido')
+    failure = 0
+    await user.click(screen.getByRole('checkbox', { name: /Verifiqué que este pedido no se creó/ }))
+    await user.click(screen.getByRole('button', { name: 'Habilitar un nuevo intento' }))
+    expect(getOrders().pending).toBeNull()
+    await user.click(await screen.findByRole('button', { name: /^Pagar / }))
+    expect(await screen.findByRole('heading', { name: '¡Pedido confirmado!' })).toBeInTheDocument()
     expect(confirmations.size).toBe(1)
   })
   it('revisa precios cambiados antes de aceptar otra confirmación', async () => {
@@ -366,22 +653,24 @@ describe('Catálogo, carrito agrupado y checkout', () => {
     const user = mount('/checkout', true)
     await screen.findByText('1 × Bowl quinoa')
     menus[1]!.dishes[0] = { ...dish, price: 6000 }
-    await user.click(screen.getByRole('button', { name: 'Confirmar pedidos' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Los precios cambiaron')
+    await user.click(screen.getByRole('button', { name: /^Pagar / }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('La cotización cambió')
     expect(getOrders().pending).toBeNull()
     expect(confirmations.size).toBe(0)
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar pedidos' })).toBeEnabled())
-    await user.click(screen.getByRole('button', { name: 'Confirmar pedidos' }))
-    await screen.findByRole('heading', { name: '¡Pedidos confirmados!' })
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Pagar / })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: /^Pagar / }))
+    await screen.findByRole('heading', { name: '¡Pedido confirmado!' })
   })
   it('retira productos no disponibles al actualizar el catálogo y mantiene el aviso', async () => {
     changeDraftQuantity(1, restaurant.name, 16, 1)
     menus[1]!.dishes = []
     mount('/restaurantes/1')
     await screen.findByText('Este restaurante todavía no tiene platos disponibles.')
-    expect(cart().getByText('Tu carrito está vacío.')).toBeInTheDocument()
+    expect(cart().getByText('Agregá un plato para empezar.')).toBeInTheDocument()
     expect(cart().getByText(/Quitamos platos que ya no están disponibles/)).toBeInTheDocument()
-    expect(cart().getByRole('button', { name: 'Ir a pagar' })).toBeDisabled()
+    expect(
+      cart().queryByRole('button', { name: /^(Revisar pedido de|Iniciar sesión para continuar con)/ }),
+    ).not.toBeInTheDocument()
   })
   it('elimina todos los grupos al cerrar sesión y mantiene el menú público', async () => {
     changeDraftQuantity(1, restaurant.name, 16, 1)
@@ -403,40 +692,27 @@ describe('Catálogo, carrito agrupado y checkout', () => {
     changeDraftQuantity(1, restaurant.name, 16, 1)
     failure = 401
     const user = mount('/checkout', true)
-    await user.click(await screen.findByRole('button', { name: 'Confirmar pedidos' }))
+    await user.click(await screen.findByRole('button', { name: /^Pagar / }))
     await screen.findByLabelText('Correo electrónico')
     expect(getOrders().drafts[1]?.items[16]).toBe(1)
     failure = 0
     await signIn(user)
     expect(await screen.findByText('1 × Bowl quinoa')).toBeInTheDocument()
   })
-  it('la barra móvil abre el detalle y devuelve el foco al cerrarlo', async () => {
+  it.each([false, true])('abre el detalle y devuelve el foco al cerrar (móvil: %s)', async (mobile) => {
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({
-        matches: query.includes('max-width'),
+        matches: mobile && query.includes('max-width'),
         media: query,
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       })),
     )
-    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
-      configurable: true,
-      value() {
-        this.open = true
-      },
-    })
-    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
-      configurable: true,
-      value() {
-        this.open = false
-        this.dispatchEvent(new Event('close'))
-      },
-    })
     const user = mount('/restaurantes')
-    const open = screen.getByRole('button', { name: 'Ver carrito' })
+    const open = screen.getByRole('button', { name: 'Ver carritos' })
     await user.click(open)
-    expect(screen.getByRole('dialog', { name: 'Tu carrito' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Tus carritos' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Cerrar carrito' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(open).toHaveFocus()

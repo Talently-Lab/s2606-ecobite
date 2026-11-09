@@ -2,21 +2,25 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Leaf, Utensils, RotateCw } from 'lucide-react'
 import { SiteHeader } from '@/shared/components/SiteHeader'
 import { SiteFooter } from '@/shared/components/SiteFooter'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams, useParams } from 'react-router-dom'
 import { CartPanel } from './CartPanel'
 import { Button } from '@/shared/components/ui'
+import { ROUTES } from '@/shared/config/routes'
 
 export function CatalogLayout({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const { id } = useParams()
   const [params, setParams] = useSearchParams()
   const browse = location.pathname.startsWith('/restaurantes')
+  const restaurantId =
+    browse && id && /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id)) ? Number(id) : undefined
   const [open, setOpen] = useState(false)
   const opener = useRef<HTMLElement | null>(null)
   const openCart = useCallback(() => {
     opener.current = document.activeElement as HTMLElement | null
-    if (window.matchMedia?.('(max-width: 1023px)').matches) setOpen(true)
+    if (restaurantId === undefined || window.matchMedia?.('(max-width: 1023px)').matches) setOpen(true)
     else document.getElementById('tu-pedido')?.focus({ preventScroll: false })
-  }, [])
+  }, [restaurantId])
   const closeCart = () => {
     setOpen(false)
     if (opener.current?.isConnected) opener.current.focus()
@@ -37,14 +41,22 @@ export function CatalogLayout({ children }: { children: ReactNode }) {
     })
     return () => cancelAnimationFrame(frame)
   }, [browse, params, setParams, openCart])
+  const cartPanel = (
+    <CartPanel open={open} onOpen={openCart} onClose={closeCart} restaurantId={restaurantId} />
+  )
   return (
-    <div className={`flex min-h-screen flex-col ${browse ? 'catalog-with-cart' : ''}`}>
-      <SiteHeader onCartOpen={browse ? openCart : undefined} />
-      <main className={`catalog-main mx-auto w-full flex-1 ${browse ? 'cart-layout' : 'space-y-6'}`}>
+    <div
+      className={`flex min-h-screen flex-col ${browse ? 'catalog-with-cart' : ''} ${browse && restaurantId === undefined ? 'restaurant-catalog' : ''}`}
+    >
+      <SiteHeader onCartOpen={browse ? openCart : undefined} restaurantId={restaurantId} />
+      <main
+        className={`catalog-main mx-auto w-full flex-1 ${browse ? 'cart-layout' : location.pathname === ROUTES.checkout ? 'checkout-main' : 'space-y-6'}`}
+      >
         {browse ? (
           <>
+            {restaurantId === undefined && cartPanel}
             <div className="cart-browse-content space-y-6">{children}</div>
-            <CartPanel open={open} onOpen={openCart} onClose={closeCart} />
+            {restaurantId !== undefined && cartPanel}
           </>
         ) : (
           children

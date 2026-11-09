@@ -49,7 +49,10 @@ export function MethodologyPage() {
                 <MapPin size={23} aria-hidden="true" />
               </span>
               <h3>Según la distancia</h3>
-              <p>Usamos el recorrido promedio de la zona para comparar ambos transportes.</p>
+              <p>
+                Usamos OSRM para obtener un recorrido de referencia por calles desde cada restaurante hasta el
+                destino confirmado.
+              </p>
             </article>
             <article data-reveal className="methodology-step">
               <span className="methodology-step-icon">
@@ -90,14 +93,16 @@ export function MethodologyPage() {
           <div>
             <p>Distancia × diferencia de emisiones entre el auto y la bici = CO₂ evitado estimado.</p>
             <p>
-              En el carrito, la estimación se calcula con el CO₂ por unidad de cada plato. Los factores de
-              emisión del proyecto son provisionales.
+              Distancia redondeada a dos decimales × 0,17 kg CO₂/km. Redondeamos el resultado a dos decimales:
+              2,50 km → 0,43 kg. Corresponde a una entrega por restaurante, independientemente de la cantidad
+              de platos.
             </p>
             <p>
               En el mapa, podés simular el traslado hasta tu destino: usamos una distancia de referencia por
-              calles con perfil de auto y un factor provisional de 180 g CO₂/km frente a 0 g/km de emisiones
+              calles con perfil de auto y un factor provisional de 170 g CO₂/km frente a 0 g/km de emisiones
               directas en bici. No es una ruta ciclista, una confirmación de cobertura ni un tiempo de
-              entrega. Esta simulación no se suma a Mi impacto ni modifica tu pedido.
+              entrega. Al completar el pedido guardamos su distancia e impacto. Cambiar el destino después no
+              modifica pedidos anteriores.
             </p>
           </div>
         </details>

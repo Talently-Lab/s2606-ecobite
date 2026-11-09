@@ -50,3 +50,35 @@
   max-height: min(55svh, 420px);
   overflow-y: auto;
 }
+
+.map-destination {
+  position: absolute;
+  z-index: 2;
+  top: 24px;
+  right: 24px;
+  width: min(340px, calc(100% - 48px));
+  max-height: calc(100% - 110px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid #24402a25;
+  border-radius: 16px;
+  background: #fffdf7f5;
+}
+.map-destination summary {
+  cursor: pointer;
+  min-height: 44px;
+  align-content: center;
+  font-weight: 600;
+}
+.map-destination fieldset {
+  margin-top: 12px;
+}
+@media (max-width: 760px) {
+  .map-destination {
+    top: auto;
+    bottom: 80px;
+    right: 16px;
+    width: calc(100% - 32px);
+    max-height: 50%;
+  }
+}

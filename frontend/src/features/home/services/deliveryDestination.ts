@@ -1,36 +1,15 @@
-import { requestCurrentPosition, type Coordinates } from './routeService'
-
-// Navigation keeps the location in memory; a reload discards it.
-let destination: Coordinates | null = null
-let initialRequestMade = false
-let pending: Promise<Coordinates> | null = null
-const listeners = new Set<() => void>()
-export const getDestination = () => destination
-export function subscribeDestination(listener: () => void) {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
+import { getOrders, setOrderDestination, useOrders, type DeliveryDestination } from '@/shared/lib/orderDraft'
+import { requestCurrentPosition } from './routeService'
+export const getDestination = () => getOrders().destination
+export function useDestination() {
+  return useOrders().destination
 }
-export function setDestination(next: Coordinates | null) {
-  destination = next
-  listeners.forEach((listener) => listener())
+export function setDestination(point: DeliveryDestination | null) {
+  setOrderDestination(point)
 }
-export function requestDestination(): Promise<Coordinates> {
-  if (destination) return Promise.resolve(destination)
-  pending ??= requestCurrentPosition()
-    .then(({ latitude, longitude }) => {
-      const point = { latitude, longitude }
-      setDestination(point)
-      return point
-    })
-    .finally(() => {
-      pending = null
-    })
-  return pending
-}
-export function requestInitialDestination() {
-  if (initialRequestMade) return pending ?? Promise.resolve(destination)
-  initialRequestMade = true
-  return requestDestination()
+export async function requestDestination() {
+  const { latitude, longitude } = await requestCurrentPosition()
+  const point = { latitude, longitude, label: 'Mi ubicación actual' }
+  setDestination(point)
+  return point
 }

@@ -28,16 +28,16 @@ export function DeliveryExplorer({
       animate: false,
     })
   }, [map, route])
-  if (!destination || !route) return null
+  if (!destination) return null
   return (
     <>
       <Marker
         position={[destination.latitude, destination.longitude]}
         icon={locationIcon}
-        title="Tu ubicación"
-        alt="Tu ubicación"
+        title="Destino de entrega"
+        alt="Destino de entrega"
       />
-      <Polyline positions={route.coordinates} pathOptions={{ color: '#2563a6', weight: 5 }} />
+      {route && <Polyline positions={route.coordinates} pathOptions={{ color: '#2563a6', weight: 5 }} />}
     </>
   )
 }

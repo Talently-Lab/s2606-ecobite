@@ -18,22 +18,22 @@ import { cartDrafts, useOrders } from '@/shared/lib/orderDraft'
 import { ROUTES } from '@/shared/config/routes'
 
 interface SiteHeaderProps {
+  restaurantId?: number
   onCartOpen?: () => void
 }
 
-export function SiteHeader({ onCartOpen }: SiteHeaderProps) {
+export function SiteHeader({ onCartOpen, restaurantId }: SiteHeaderProps) {
   const location = useLocation()
   // Route changes close disclosures, including browser back/forward navigation.
-  return <HeaderNavigation key={location.key} onCartOpen={onCartOpen} />
+  return <HeaderNavigation key={location.key} onCartOpen={onCartOpen} restaurantId={restaurantId} />
 }
 
-function HeaderNavigation({ onCartOpen }: SiteHeaderProps) {
+function HeaderNavigation({ onCartOpen, restaurantId }: SiteHeaderProps) {
   const { usuario, logout } = useAuth()
   const orders = useOrders()
-  const cartCount = cartDrafts(orders).reduce(
-    (sum, draft) => sum + Object.values(draft.items).reduce((a, b) => a + b, 0),
-    0,
-  )
+  const cartCount = cartDrafts(orders)
+    .filter((draft) => restaurantId === undefined || draft.restaurantId === restaurantId)
+    .reduce((sum, draft) => sum + Object.values(draft.items).reduce((a, b) => a + b, 0), 0)
   const [menu, setMenu] = useState<'navigation' | 'account' | null>(null)
   const headerRef = useRef<HTMLElement>(null)
   const accountRef = useRef<HTMLButtonElement>(null)
@@ -81,6 +81,7 @@ function HeaderNavigation({ onCartOpen }: SiteHeaderProps) {
             Inicio
           </NavLink>
           <NavLink to={ROUTES.restaurants}>Restaurantes</NavLink>
+          <NavLink to={ROUTES.map}>Mapa</NavLink>
           <NavLink to={ROUTES.methodology}>Nuestro impacto</NavLink>
         </nav>
         <div className="site-header-actions">

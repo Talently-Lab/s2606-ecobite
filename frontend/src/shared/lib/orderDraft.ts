@@ -1,9 +1,30 @@
 import { useSyncExternalStore } from 'react'
 
+export interface DeliveryDestination {
+  latitude: number
+  longitude: number
+  label: string
+}
+export function isDestination(value: unknown): value is DeliveryDestination {
+  const p = value as DeliveryDestination | null
+  return (
+    !!p &&
+    typeof p.latitude === 'number' &&
+    Number.isFinite(p.latitude) &&
+    Math.abs(p.latitude) <= 90 &&
+    typeof p.longitude === 'number' &&
+    Number.isFinite(p.longitude) &&
+    Math.abs(p.longitude) <= 180 &&
+    typeof p.label === 'string' &&
+    !!p.label.trim() &&
+    p.label.length <= 500
+  )
+}
 const KEY = 'ecobite.order-drafts.v2'
 export interface OrderInput {
   restaurantId: number
-  zone: string
+  zone?: string
+  destination?: DeliveryDestination | null
   items: { dishId: number; quantity: number }[]
 }
 export interface OrderDraft {
@@ -19,17 +40,17 @@ export interface PendingConfirmation {
   expectedSubtotalCents: number
 }
 interface OrderState {
+  destination: DeliveryDestination | null
   ownerId: number | null
   drafts: Record<number, OrderDraft>
-  expandedRestaurantId: number | null
   pending: PendingConfirmation | null
   storageAvailable: boolean
   message: string | null
 }
 const empty = (): OrderState => ({
+  destination: null,
   ownerId: null,
   drafts: {},
-  expandedRestaurantId: null,
   pending: null,
   storageAvailable: true,
   message: null,
@@ -45,7 +66,7 @@ export const cartInputs = (state: OrderState): OrderInput[] =>
   cartDrafts(state)
     .map((draft) => ({
       restaurantId: draft.restaurantId,
-      zone: 'cercana',
+      destination: state.destination,
       items: Object.entries(draft.items)
         .map(([dishId, quantity]) => ({ dishId: Number(dishId), quantity }))
         .sort((a, b) => a.dishId - b.dishId),
@@ -93,8 +114,8 @@ function decode(raw: string | null): OrderState {
     const state: OrderState = {
       ...empty(),
       ownerId: value.ownerId,
+      destination: isDestination(value.destination) ? value.destination : null,
       drafts,
-      expandedRestaurantId: positive(value.expandedRestaurantId) ? value.expandedRestaurantId : null,
     }
     if (value.version === 1 && cartDrafts(state).length)
       state.message =
@@ -106,7 +127,18 @@ function decode(raw: string | null): OrderState {
       /^[0-9a-f-]{36}$/i.test(pending.key) &&
       Number.isSafeInteger(pending.expectedSubtotalCents) &&
       pending.expectedSubtotalCents >= 0 &&
-      JSON.stringify(pending.orders) === JSON.stringify(cartInputs(state))
+      Array.isArray(pending.orders) &&
+      pending.orders.length > 0 &&
+      pending.orders.every((order: OrderInput) => order && positive(order.restaurantId)) &&
+      new Set(pending.orders.map((order: OrderInput) => order.restaurantId)).size === pending.orders.length &&
+      pending.orders.every(
+        (order: OrderInput) =>
+          Array.isArray(order.items) &&
+          order.items.length > 0 &&
+          order.items.every(
+            (item) => positive(item?.dishId) && positive(item?.quantity) && item.quantity <= 20,
+          ),
+      )
     )
       state.pending = pending
     return state
@@ -135,8 +167,8 @@ function save(next: OrderState) {
       const raw = JSON.stringify({
         version: 2,
         ownerId: next.ownerId,
+        destination: next.destination,
         drafts: next.drafts,
-        expandedRestaurantId: next.expandedRestaurantId,
         pending: next.pending,
       })
       sessionStorage.setItem(KEY, raw)
@@ -179,10 +211,6 @@ export function editDraft(
   const draft = state.drafts[restaurantId] ?? { restaurantId, name, items: {}, search: '', category: '' }
   save({ ...state, drafts: { ...state.drafts, [restaurantId]: { ...draft, name, ...patch } } })
 }
-export function toggleDraft(restaurantId: number) {
-  const state = getOrders()
-  save({ ...state, expandedRestaurantId: state.expandedRestaurantId === restaurantId ? null : restaurantId })
-}
 export function changeDraftQuantity(
   restaurantId: number,
   name: string,
@@ -193,8 +221,7 @@ export function changeDraftQuantity(
   if (state.pending) {
     save({
       ...state,
-      message:
-        'Hay una confirmación pendiente. Recuperá su resultado en el checkout antes de modificar el carrito.',
+      message: 'Hay una confirmación pendiente. Revisá su estado antes de modificar el carrito.',
     })
     return false
   }
@@ -218,7 +245,6 @@ export function changeDraftQuantity(
   save({
     ...state,
     message: null,
-    expandedRestaurantId: restaurantId,
     drafts: { ...state.drafts, [restaurantId]: { ...draft, name, items } },
   })
   return true
@@ -243,10 +269,12 @@ export function removeDraft(restaurantId: number) {
   delete drafts[restaurantId]
   save({ ...state, drafts })
 }
-export function beginConfirmation(expectedSubtotalCents: number): PendingConfirmation {
+export function beginConfirmation(restaurantId: number, expectedSubtotalCents: number): PendingConfirmation {
   const state = getOrders()
   if (state.pending) return state.pending
-  const pending = { key: crypto.randomUUID(), orders: cartInputs(state), expectedSubtotalCents }
+  const order = cartInputs(state).find((candidate) => candidate.restaurantId === restaurantId)
+  if (!order) throw new Error('El carrito de este restaurante está vacío.')
+  const pending = { key: crypto.randomUUID(), orders: [order], expectedSubtotalCents }
   save({ ...state, pending })
   return pending
 }
@@ -259,4 +287,10 @@ export function finishConfirmation() {
   const drafts = { ...state.drafts }
   for (const order of state.pending?.orders ?? []) delete drafts[order.restaurantId]
   save({ ...state, drafts, pending: null, message: null })
+}
+
+export function setOrderDestination(destination: DeliveryDestination | null) {
+  const state = getOrders()
+  if (state.pending || (destination !== null && !isDestination(destination))) return
+  save({ ...state, destination })
 }

@@ -1,3 +1,4 @@
+import type { DeliveryDestination } from '@/shared/lib/orderDraft'
 export interface CheckoutQuoteItem {
   dishId: number
   name: string
@@ -7,8 +8,12 @@ export interface CheckoutQuoteItem {
 }
 
 export interface CheckoutQuote {
+  deliveryToken?: string
   restaurantId: number
   restaurantName: string
+  destination: DeliveryDestination | null
+  distanceKm: number
+  methodology: string | null
   zone: string
   items: CheckoutQuoteItem[]
   subtotal: number
@@ -33,6 +38,7 @@ export interface OrderConfirmation {
   date: string
   status: string
   total: number
+  distanceKm: number
   zone: string
   restaurant: { id: number; name: string }
   items: OrderConfirmationItem[]
@@ -66,19 +72,4 @@ export interface AdminDashboard {
     co2SavedKg: number | null
     status: string
   }>
-}
-
-export interface GroupQuote {
-  groups: CheckoutQuote[]
-  subtotal: number
-  deliveryFee: null
-  total: null
-}
-export interface GroupConfirmation {
-  groupId: string
-  date: string
-  orders: OrderConfirmation[]
-  subtotal: number
-  environmentalImpact: { co2SavedKg: number }
-  myImpact: MyImpact
 }

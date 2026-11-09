@@ -1,35 +1,31 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronDown, Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
 import { useAuth } from '@/features/auth'
-import { ROUTES, restaurantMenuUrl } from '@/shared/config/routes'
-import { cartDrafts, changeDraftQuantity, removeDraft, toggleDraft, useOrders } from '@/shared/lib/orderDraft'
+import { ROUTES, restaurantMenuUrl, checkoutUrl } from '@/shared/config/routes'
+import { cartDrafts, changeDraftQuantity, removeDraft, useOrders } from '@/shared/lib/orderDraft'
 import { loadMenu, useMenus } from './menuCache'
 import { formatPrice } from './formatPrice'
 import './cart.css'
 
-function useCartSummary() {
+function useCartSummary(restaurantId?: number) {
   const orders = useOrders()
-  const groups = cartDrafts(orders)
+  const groups = cartDrafts(orders).filter(
+    (draft) => restaurantId === undefined || draft.restaurantId === restaurantId,
+  )
   const menus = useMenus()
   const count = groups.reduce((sum, group) => sum + Object.values(group.items).reduce((a, b) => a + b, 0), 0)
-  const complete = groups.every((group) => !!menus[group.restaurantId]?.data)
-  const subtotal = groups.reduce(
-    (sum, group) =>
-      sum +
-      (menus[group.restaurantId]?.data?.dishes ?? []).reduce(
-        (total, dish) => total + dish.price * (group.items[dish.id] ?? 0),
-        0,
-      ),
-    0,
-  )
-  return { orders, groups, menus, count, complete, subtotal }
+  return { orders, groups, menus, count }
 }
 
-function CartSummary({ idPrefix = 'cart' }: { idPrefix?: string }) {
-  const { orders, groups, menus, count, complete, subtotal } = useCartSummary()
+function CartSummary({ idPrefix = 'cart', restaurantId }: { idPrefix?: string; restaurantId?: number }) {
+  const { orders, groups, menus, count } = useCartSummary(restaurantId)
   const { usuario, loading } = useAuth()
   const navigate = useNavigate()
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const hasOtherCarts =
+    restaurantId !== undefined && cartDrafts(orders).some((draft) => draft.restaurantId !== restaurantId)
+  const restaurantName = restaurantId === undefined ? null : menus[restaurantId]?.data?.restaurant.name
   const ids = groups.map((group) => group.restaurantId).join(',')
   useEffect(() => {
     for (const id of ids.split(',').filter(Boolean).map(Number)) void loadMenu(id).catch(() => {})
@@ -38,18 +34,29 @@ function CartSummary({ idPrefix = 'cart' }: { idPrefix?: string }) {
     <div className="cart-summary">
       <header className="cart-title">
         <ShoppingCart size={21} aria-hidden="true" />
-        <h2>Tu carrito</h2>
-        <span aria-hidden="true">{count}</span>
-        <span className="sr-only" role="status">
-          {count} productos en tu carrito
+        <h2>
+          {restaurantId === undefined
+            ? 'Tus carritos'
+            : `Tu pedido${restaurantName ? ` de ${restaurantName}` : ''}`}
+        </h2>
+        <span role="status">
+          {count} {count === 1 ? 'producto' : 'productos'}
         </span>
       </header>
       <div className="cart-groups">
+        {restaurantId === undefined && groups.length > 0 && (
+          <p className="cart-explanation">Cada carrito se confirma y entrega por separado.</p>
+        )}
         {!groups.length && (
           <div className="cart-empty">
-            <ShoppingCart size={36} aria-hidden="true" />
-            <p>Tu carrito está vacío.</p>
-            <small>Explorá los restaurantes y agregá tus platos favoritos.</small>
+            {restaurantId === undefined ? (
+              <>
+                <p>Tu carrito está vacío.</p>
+                <small>Elegí un restaurante para empezar.</small>
+              </>
+            ) : (
+              <p>Agregá un plato para empezar.</p>
+            )}
           </div>
         )}
         {orders.message && (
@@ -67,46 +74,40 @@ function CartSummary({ idPrefix = 'cart' }: { idPrefix?: string }) {
           const items = entry?.data?.dishes.filter((dish) => (group.items[dish.id] ?? 0) > 0) ?? []
           const quantity = Object.values(group.items).reduce((sum, n) => sum + n, 0)
           const amount = items.reduce((sum, dish) => sum + dish.price * (group.items[dish.id] ?? 0), 0)
-          const expanded = groups.length === 1 || orders.expandedRestaurantId === group.restaurantId
+          const expanded = restaurantId !== undefined || expandedId === group.restaurantId
           return (
             <section className="cart-group" key={group.restaurantId}>
-              {groups.length > 1 ? (
+              {restaurantId === undefined ? (
                 <button
                   type="button"
                   className="cart-group-toggle"
                   aria-expanded={expanded}
                   aria-controls={`${idPrefix}-items-${group.restaurantId}`}
-                  onClick={() => toggleDraft(group.restaurantId)}
+                  onClick={() => setExpandedId(expanded ? null : group.restaurantId)}
+                  aria-label={`Revisar carrito de ${group.name}`}
                 >
                   <span>
                     <strong>{group.name}</strong>
                     <small>
-                      {quantity} {quantity === 1 ? 'producto' : 'productos'} ·{' '}
+                      {quantity} {quantity === 1 ? 'producto' : 'productos'} · Subtotal:{' '}
                       {entry?.data ? formatPrice(amount) : 'Actualizando…'}
                     </small>
                   </span>
                   <ChevronDown size={18} aria-hidden="true" className={expanded ? 'is-expanded' : ''} />
                 </button>
-              ) : (
-                <div className="cart-group-label">
-                  <strong>{group.name}</strong>
-                  <small>
-                    {quantity} {quantity === 1 ? 'producto' : 'productos'}
-                  </small>
+              ) : null}
+              {entry?.error && (
+                <div className="cart-notice">
+                  <p role="alert">No pudimos actualizar este restaurante.</p>
+                  <button
+                    type="button"
+                    onClick={() => void loadMenu(group.restaurantId, true).catch(() => {})}
+                  >
+                    Reintentar
+                  </button>
                 </div>
               )}
               <div id={`${idPrefix}-items-${group.restaurantId}`} hidden={!expanded}>
-                {entry?.error && (
-                  <div className="cart-notice">
-                    <p role="alert">No pudimos actualizar este restaurante.</p>
-                    <button
-                      type="button"
-                      onClick={() => void loadMenu(group.restaurantId, true).catch(() => {})}
-                    >
-                      Reintentar
-                    </button>
-                  </div>
-                )}
                 {!entry?.data && !entry?.error && <p role="status">Actualizando productos y precios…</p>}
                 {items.map((dish) => (
                   <div className="cart-item" key={dish.id}>
@@ -145,10 +146,39 @@ function CartSummary({ idPrefix = 'cart' }: { idPrefix?: string }) {
                     type="button"
                     disabled={!!orders.pending}
                     onClick={() => removeDraft(group.restaurantId)}
-                    aria-label={`Quitar restaurante ${group.name}`}
+                    aria-label={`Quitar carrito de ${group.name}`}
                   >
                     <Trash2 size={15} aria-hidden="true" />
-                    Quitar
+                    Quitar carrito
+                  </button>
+                </div>
+                <div className="cart-restaurant-total">
+                  <p>
+                    <span>Subtotal de productos</span>
+                    <strong>{entry?.data ? formatPrice(amount) : 'Actualizando…'}</strong>
+                  </p>
+                  {!usuario && (
+                    <p className="text-sm text-musgo">
+                      Para confirmar tu pedido, iniciá sesión o creá una cuenta.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="eco-button"
+                    disabled={loading || !entry?.data || !!entry.error || !!orders.pending}
+                    aria-label={
+                      usuario
+                        ? `Revisar pedido de ${group.name}`
+                        : `Iniciar sesión para continuar con ${group.name}`
+                    }
+                    onClick={() =>
+                      navigate(
+                        usuario ? checkoutUrl(group.restaurantId) : ROUTES.login,
+                        usuario ? undefined : { state: { from: checkoutUrl(group.restaurantId) } },
+                      )
+                    }
+                  >
+                    {usuario ? 'Revisar pedido' : 'Iniciar sesión para continuar'}
                   </button>
                 </div>
               </div>
@@ -156,26 +186,23 @@ function CartSummary({ idPrefix = 'cart' }: { idPrefix?: string }) {
           )
         })}
       </div>
-      <footer className="cart-total">
-        <p>
-          <span>Subtotal de productos</span>
-          <strong>{complete ? formatPrice(subtotal) : 'Actualizando…'}</strong>
-        </p>
-        <small>El envío no está calculado. Revisarás todo antes de confirmar.</small>
-        <button
-          type="button"
-          className="eco-button"
-          disabled={!count || loading || (!complete && !orders.pending)}
-          onClick={() =>
-            navigate(
-              usuario ? ROUTES.checkout : ROUTES.login,
-              usuario ? undefined : { state: { from: ROUTES.checkout } },
-            )
-          }
-        >
-          {orders.pending ? 'Recuperar confirmación' : 'Ir a pagar'}
-        </button>
-      </footer>
+      {(orders.pending || hasOtherCarts) && (
+        <footer className="cart-total">
+          {hasOtherCarts && (
+            <Link
+              className="inline-flex min-h-11 items-center underline"
+              to={`${ROUTES.restaurants}?carrito=1`}
+            >
+              Ver mis otros carritos
+            </Link>
+          )}
+          {orders.pending && (
+            <Link className="eco-button" to={checkoutUrl(orders.pending.orders[0]!.restaurantId)}>
+              Revisar confirmación pendiente
+            </Link>
+          )}
+        </footer>
+      )}
     </div>
   )
 }
@@ -184,34 +211,60 @@ export function CartPanel({
   open,
   onOpen,
   onClose,
+  restaurantId,
 }: {
+  restaurantId?: number
   open: boolean
   onOpen: () => void
   onClose: () => void
 }) {
-  const { count, complete, subtotal } = useCartSummary()
+  const { count, groups, orders } = useCartSummary(restaurantId)
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     if (open && dialog.current && !dialog.current.open) dialog.current.showModal()
   }, [open])
   return (
     <>
-      <aside id="tu-pedido" tabIndex={-1} aria-label="Carrito" className="persistent-cart">
-        <CartSummary />
-      </aside>
-      <div className="mobile-cart-bar">
-        <span>
-          <strong>
-            {count} {count === 1 ? 'producto' : 'productos'}
-          </strong>
-          <small>{complete ? formatPrice(subtotal) : 'Actualizando…'}</small>
-        </span>
-        <button type="button" onClick={onOpen}>
-          Ver carrito
-        </button>
-      </div>
+      {restaurantId !== undefined && (
+        <aside id="tu-pedido" tabIndex={-1} aria-label="Carrito" className="persistent-cart">
+          <CartSummary restaurantId={restaurantId} />
+        </aside>
+      )}
+      {(restaurantId === undefined ||
+        count > 0 ||
+        orders.message ||
+        !orders.storageAvailable ||
+        orders.pending) && (
+        <div className={restaurantId === undefined ? 'catalog-cart-bar' : 'mobile-cart-bar'}>
+          <span>
+            <strong>
+              {restaurantId === undefined &&
+                `${groups.length} ${groups.length === 1 ? 'carrito' : 'carritos'} · `}
+              {count} {count === 1 ? 'producto' : 'productos'}
+            </strong>
+            <small>
+              {restaurantId === undefined
+                ? 'Se confirman y entregan por separado'
+                : (orders.message ??
+                  (orders.pending
+                    ? 'Hay una confirmación pendiente'
+                    : !orders.storageAvailable
+                      ? 'El carrito no se conservará al recargar'
+                      : 'Carrito de este restaurante'))}
+            </small>
+          </span>
+          <button type="button" onClick={onOpen}>
+            {restaurantId === undefined ? 'Ver carritos' : 'Ver carrito'}
+          </button>
+        </div>
+      )}
       {open && (
-        <dialog ref={dialog} className="cart-dialog" aria-label="Tu carrito" onClose={onClose}>
+        <dialog
+          ref={dialog}
+          className="cart-dialog"
+          aria-label={restaurantId === undefined ? 'Tus carritos' : 'Tu carrito'}
+          onClose={onClose}
+        >
           <button
             type="button"
             className="cart-dialog-close"
@@ -220,7 +273,7 @@ export function CartPanel({
           >
             <X size={22} aria-hidden="true" />
           </button>
-          <CartSummary idPrefix="cart-dialog" />
+          <CartSummary idPrefix="cart-dialog" restaurantId={restaurantId} />
         </dialog>
       )}
     </>

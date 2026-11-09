@@ -2,15 +2,9 @@ import { Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { GuestRoute, LoginPage, ProtectedRoute, RegisterPage } from '@/features/auth'
 import { MethodologyPage, JoinPage, ContactPage } from '@/features/information'
-import { HomePage } from '@/features/home'
+import { HomePage, RestaurantMapPage } from '@/features/home'
 import { RestaurantCatalogPage, RestaurantMenuPage } from '@/features/catalog'
-import {
-  CheckoutPage,
-  GroupConfirmationPage,
-  OrderConfirmationPage,
-  ImpactPage,
-  AdminDashboardPage,
-} from '@/features/panel'
+import { CheckoutPage, OrderConfirmationPage, ImpactPage, AdminDashboardPage } from '@/features/panel'
 import { ROUTES } from '@/shared/config/routes'
 
 export function AppRoutes() {
@@ -30,6 +24,20 @@ export function AppRoutes() {
           </Suspense>
         }
       />
+      <Route
+        path={ROUTES.map}
+        element={
+          <Suspense
+            fallback={
+              <p role="status" className="p-8 text-center text-musgo">
+                Cargando mapa…
+              </p>
+            }
+          >
+            <RestaurantMapPage />
+          </Suspense>
+        }
+      />
       <Route path={ROUTES.methodology} element={<MethodologyPage />} />
       <Route path={ROUTES.join} element={<JoinPage />} />
       <Route path={ROUTES.contact} element={<ContactPage />} />
@@ -41,7 +49,6 @@ export function AppRoutes() {
         <Route path={ROUTES.register} element={<RegisterPage />} />
       </Route>
       <Route element={<ProtectedRoute />}>
-        <Route path={ROUTES.groupConfirmation} element={<GroupConfirmationPage />} />
         <Route path={ROUTES.checkout} element={<CheckoutPage />} />
         <Route path={ROUTES.orderConfirmation} element={<OrderConfirmationPage />} />
         <Route path={ROUTES.impact} element={<ImpactPage />} />

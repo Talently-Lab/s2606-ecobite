@@ -50,7 +50,7 @@ describe('Metodología de CO₂', () => {
     expect(details).not.toHaveAttribute('open')
     await user.click(summary)
     expect(details).toHaveAttribute('open')
-    expect(within(details).getByText(/CO₂ por unidad de cada plato/)).toBeVisible()
+    expect(within(details).getByText(/2,50 km → 0,43 kg/)).toBeVisible()
     await user.click(summary)
     expect(details).not.toHaveAttribute('open')
   })

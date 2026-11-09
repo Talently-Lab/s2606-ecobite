@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { lazy, Suspense, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUpRight, Bike, Leaf, ShoppingBag } from 'lucide-react'
 import { SiteHeader } from '@/shared/components/SiteHeader'
@@ -10,17 +10,12 @@ import tomato from '@/shared/assets/ingredient-tomato.webp'
 import leaf from '@/shared/assets/ingredient-leaf.webp'
 import { useHome } from '../hooks/useHome'
 import { RestaurantMap } from '../components/RestaurantMap'
-import { requestInitialDestination } from '../services/deliveryDestination'
 
 const HomeMotion = lazy(() => import('../homeMotion').catch(() => ({ default: () => null })))
 
 export function HomePage() {
   const { data, loading, error } = useHome()
   const scope = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    // Ask on entry, independently of API/map loading; selection handles retries.
-    void requestInitialDestination().catch(() => {})
-  }, [])
   const restaurants = data?.restaurants ?? []
   const steps = [
     {

@@ -1,15 +1,17 @@
 import { CatalogLayout } from '@/features/catalog'
 import { ArrowRight, Check, LoaderCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { Alert } from '@/shared/components/ui'
 import { ROUTES } from '@/shared/config/routes'
 import { formatPrice } from '@/features/catalog'
 import { panelService } from '../panelService'
+import { restaurantMenuUrl } from '@/shared/config/routes'
 import type { ConfirmationData } from '../types'
 
 export function OrderConfirmationPage() {
   const { id } = useParams()
+  const paymentMethod = useLocation().state?.paymentMethod
   const orderId = Number(id)
   const [data, setData] = useState<ConfirmationData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +62,7 @@ export function OrderConfirmationPage() {
     <CatalogLayout>
       <div className="checkout-shell mx-auto flex w-full max-w-4xl flex-col items-center gap-8 px-6 py-12">
         <header className="space-y-3 text-center">
+          <p>Distancia del recorrido: {order.distanceKm.toLocaleString('es-AR')} km</p>
           <span className="confirmation-check mx-auto flex size-16 items-center justify-center rounded-full bg-brote text-noche">
             <Check className="size-9" aria-hidden="true" />
           </span>
@@ -100,9 +103,26 @@ export function OrderConfirmationPage() {
             </div>
           ))}
           <div className="flex justify-between border-t border-borde pt-4 font-display text-xl font-semibold">
-            <span>Total</span>
+            <span>Importe confirmado (ARS)</span>
             <span>{formatPrice(order.total)}</span>
           </div>
+          {(paymentMethod === 'card' || paymentMethod === 'paypal') && (
+            <p className="text-sm text-musgo">
+              Pago simulado aprobado · {paymentMethod === 'paypal' ? 'PayPal' : 'Tarjeta'}
+            </p>
+          )}
+          <p className="text-sm text-musgo">Demo · No se realizó ningún cobro.</p>
+          <p className="text-sm text-musgo">
+            Este restaurante prepara y entrega por separado. Tus otros carritos se conservan.
+          </p>
+          {order.status === 'completed' && (
+            <Link
+              className="inline-flex min-h-11 items-center underline"
+              to={`${restaurantMenuUrl(order.restaurant.id)}#valoraciones`}
+            >
+              Valorar este restaurante
+            </Link>
+          )}
         </section>
         <Link to={ROUTES.restaurants} className="rounded-full bg-bosque px-6 py-3 font-semibold text-white">
           Seguir explorando locales

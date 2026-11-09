@@ -4,11 +4,12 @@ import { divIcon, type FitBoundsOptions } from 'leaflet'
 import { MapContainer, Marker, TileLayer, Popup, ZoomControl, useMap } from 'react-leaflet'
 import { ArrowUpRight, LoaderCircle, MapPin } from 'lucide-react'
 import { Alert } from '@/shared/components/ui'
-import { ROUTES, selectedRestaurantUrl } from '@/shared/config/routes'
+import { ROUTES, restaurantMenuUrl } from '@/shared/config/routes'
 import { DeliveryExplorer } from './DeliveryExplorer'
 import { useDeliveryEstimate } from '../services/useDeliveryEstimate'
-import { calculateEstimatedBikeSavings } from '../services/routeService'
+import { DeliveryDestinationField } from '@/shared/components/DeliveryDestinationField'
 import type { Restaurant } from '../types'
+import type { Coordinates } from '../services/routeService'
 import 'leaflet/dist/leaflet.css'
 
 interface RestaurantMapProps {
@@ -33,9 +34,11 @@ const restaurantIcon = divIcon({
 
 function MapViewport({
   restaurants,
+  destination,
   onReady,
 }: {
   restaurants: LocatedRestaurant[]
+  destination: Coordinates | null
   onReady: (ready: boolean) => void
 }) {
   const map = useMap()
@@ -51,7 +54,9 @@ function MapViewport({
       height = nextHeight
       map.invalidateSize({ pan: false, animate: false })
       map.fitBounds(
-        restaurants.map(({ latitude, longitude }): [number, number] => [latitude, longitude]),
+        [...restaurants, ...(destination ? [destination] : [])].map(
+          ({ latitude, longitude }): [number, number] => [latitude, longitude],
+        ),
         BOUNDS_OPTIONS,
       )
       // This component mounts after the markers, so the first visible frame includes them.
@@ -62,11 +67,12 @@ function MapViewport({
     const observer = new ResizeObserver(fit)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [map, restaurants, onReady])
+  }, [map, restaurants, destination, onReady])
   return null
 }
 
 export function RestaurantMap({ restaurants, loading, error }: RestaurantMapProps) {
+  const [editingDestination, setEditingDestination] = useState(false)
   const located = useMemo(
     () =>
       restaurants.filter(
@@ -97,7 +103,7 @@ export function RestaurantMap({ restaurants, loading, error }: RestaurantMapProp
         <span className="eyebrow">
           <MapPin size={16} aria-hidden="true" /> TU PRÓXIMA COMIDA, CERCA
         </span>
-        <h2>Elegí dónde comer</h2>
+        <h1>Elegí dónde comer</h1>
         {loading ? (
           <p role="status">Cargando restaurantes…</p>
         ) : error ? (
@@ -113,6 +119,13 @@ export function RestaurantMap({ restaurants, loading, error }: RestaurantMapProp
           Ver todos los restaurantes <ArrowUpRight size={18} aria-hidden="true" />
         </Link>
       </div>
+      <details
+        className="map-destination"
+        onToggle={(event) => setEditingDestination(event.currentTarget.open)}
+      >
+        <summary>Destino de entrega</summary>
+        {editingDestination && <DeliveryDestinationField showMap={false} />}
+      </details>
     </div>
   )
 }
@@ -182,18 +195,14 @@ function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
                         <>
                           <p role="alert">{delivery.error}</p>
                           <button type="button" onClick={delivery.retry}>
-                            {delivery.destination ? 'Reintentar ruta' : 'Permitir ubicación'}
+                            Reintentar ruta
                           </button>
-                          {!delivery.destination && (
-                            <small>
-                              Si el navegador bloqueó el permiso, habilitá «Ubicación» desde el icono junto a
-                              la dirección y volvé a intentarlo.
-                            </small>
-                          )}
                         </>
                       ) : !delivery.route ? (
                         <p role="status">
-                          {delivery.destination ? 'Calculando ruta…' : 'Esperando permiso de ubicación…'}
+                          {delivery.destination
+                            ? 'Calculando ruta…'
+                            : 'Elegí un destino para estimar el recorrido.'}
                         </p>
                       ) : (
                         <>
@@ -209,17 +218,16 @@ function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
                           <p>
                             Ahorro potencial:{' '}
                             <strong>
-                              {calculateEstimatedBikeSavings(delivery.route.distanceKm).toLocaleString(
-                                'es-AR',
-                                { maximumFractionDigits: 2 },
-                              )}{' '}
+                              {delivery.route.co2SavedKg.toLocaleString('es-AR', {
+                                maximumFractionDigits: 2,
+                              })}{' '}
                               kg de CO₂
                             </strong>
                           </p>
                           <details>
                             <summary>Cómo se calcula</summary>
                             <small>
-                              Distancia × 180 g CO₂/km ÷ 1000. Comparación provisional entre auto y bici, solo
+                              Distancia × 170 g CO₂/km ÷ 1000. Comparación provisional entre auto y bici, solo
                               emisiones directas. Ruta de referencia para auto; no confirma cobertura ni
                               tiempo de delivery. No se suma a Mi impacto.
                             </small>
@@ -227,22 +235,21 @@ function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
                           </details>
                         </>
                       )}
-                      <small>La ruta se calcula con OSRM usando tu ubicación y la del local.</small>
                     </div>
                   )}
                   <Link
                     className="eco-button"
-                    to={selectedRestaurantUrl(restaurant.id)}
-                    aria-label={`Ver más de ${restaurant.name}`}
+                    to={restaurantMenuUrl(restaurant.id)}
+                    aria-label={`Ver menú de ${restaurant.name}`}
                   >
-                    Ver más <ArrowUpRight size={16} aria-hidden="true" />
+                    Ver menú <ArrowUpRight size={16} aria-hidden="true" />
                   </Link>
                 </div>
               </Popup>
             </Marker>
           ))}
           <DeliveryExplorer destination={delivery.destination} route={delivery.route} />
-          <MapViewport restaurants={restaurants} onReady={setPrepared} />
+          <MapViewport restaurants={restaurants} destination={delivery.destination} onReady={setPrepared} />
         </MapContainer>
       </div>
       {!prepared && (
@@ -254,7 +261,7 @@ function PreparedMap({ restaurants }: { restaurants: LocatedRestaurant[] }) {
       <p className="map-instruction">
         {tileError
           ? 'No pudimos cargar parte del mapa. Podés explorar todos los locales en el catálogo.'
-          : 'Seleccioná un marcador para conocer el local. Pulsá «Ver más» para explorarlo.'}
+          : 'Seleccioná un restaurante para conocerlo y ver su menú.'}
       </p>
     </>
   )

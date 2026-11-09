@@ -54,8 +54,8 @@ describe('carrito agrupado', () => {
   it('conserva el mismo intento tras recargar y bloquea cambios hasta recuperar su resultado', async () => {
     let store = await import('./orderDraft')
     store.changeDraftQuantity(1, 'Verde', 16, 2)
-    const pending = store.beginConfirmation(900000)
-    expect(store.beginConfirmation(1)).toBe(pending)
+    const pending = store.beginConfirmation(1, 900000)
+    expect(store.beginConfirmation(1, 1)).toBe(pending)
     expect(store.changeDraftQuantity(1, 'Verde', 16, 1)).toBe(false)
     vi.resetModules()
     store = await import('./orderDraft')
@@ -65,6 +65,19 @@ describe('carrito agrupado', () => {
     store.finishConfirmation()
     expect(store.cartDrafts(store.getOrders())).toEqual([])
     expect(store.getOrders().pending).toBeNull()
+  })
+  it('conserva el otro carrito durante y después de la confirmación individual, incluso al recargar', async () => {
+    let store = await import('./orderDraft')
+    store.changeDraftQuantity(1, 'Verde', 16, 2)
+    store.changeDraftQuantity(2, 'Raíz', 20, 1)
+    const pending = store.beginConfirmation(2, 500000)
+    expect(pending.orders.map((order) => order.restaurantId)).toEqual([2])
+    vi.resetModules()
+    store = await import('./orderDraft')
+    expect(store.getOrders().pending).toEqual(pending)
+    store.finishConfirmation()
+    expect(store.getOrders().drafts[1]?.items).toEqual({ 16: 2 })
+    expect(store.getOrders().drafts[2]).toBeUndefined()
   })
   it('retira productos no disponibles, permite quitar un grupo y limita cantidades', async () => {
     const store = await import('./orderDraft')
@@ -108,5 +121,47 @@ describe('carrito agrupado', () => {
     expect(store.getOrders().storageAvailable).toBe(false)
     store.changeDraftQuantity(2, 'Raíz', 20, 1)
     expect(store.cartDrafts(store.getOrders())).toHaveLength(2)
+  })
+})
+
+describe('destinos y migración', () => {
+  it('conserva destino y productos al recargar o recuperar la misma cuenta y los limpia al salir/cambiar cuenta', async () => {
+    let store = await import('./orderDraft')
+    const destination = { latitude: 1, longitude: 2, label: 'Destino confirmado' }
+    store.setOrderDestination(destination)
+    store.changeDraftQuantity(1, 'Local', 1, 2)
+    store.claimOrderOwner(1)
+    vi.resetModules()
+    store = await import('./orderDraft')
+    expect(store.getOrders().destination).toEqual(destination)
+    store.claimOrderOwner(1)
+    expect(store.cartInputs(store.getOrders())[0]?.destination).toEqual(destination)
+    store.claimOrderOwner(2)
+    expect(store.getOrders().destination).toBeNull()
+    store.setOrderDestination(destination)
+    store.clearOrders()
+    expect(store.getOrders().destination).toBeNull()
+  })
+  it('conserva intentos antiguos sin destino hasta su revisión', async () => {
+    const pending = {
+      key: '00000000-0000-0000-0000-000000000000',
+      orders: [{ restaurantId: 1, zone: 'cercana', items: [{ dishId: 16, quantity: 2 }] }],
+      expectedSubtotalCents: 900000,
+    }
+    sessionStorage.setItem(
+      'ecobite.order-drafts.v2',
+      JSON.stringify({
+        version: 2,
+        ownerId: 1,
+        drafts: { 1: { restaurantId: 1, name: 'Local', search: '', category: '', items: { 16: 2 } } },
+        pending,
+      }),
+    )
+    const store = await import('./orderDraft')
+    expect(store.getOrders().pending).toEqual(pending)
+    expect(store.getOrders().destination).toBeNull()
+    store.setOrderDestination({ latitude: 1, longitude: 2, label: 'Cambio' })
+    expect(store.getOrders().destination).toBeNull()
+    expect(store.changeDraftQuantity(1, 'Local', 16, 1)).toBe(false)
   })
 })

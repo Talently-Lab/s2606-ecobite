@@ -85,7 +85,9 @@ export async function request<T>(
     const fallback =
       res.status === 429
         ? 'Demasiados intentos. Inténtalo nuevamente más tarde.'
-        : 'Algo salió mal. Intentá de nuevo.'
+        : res.status === 404 && path.startsWith('/delivery/')
+          ? 'El servicio de ubicación y recorridos no está disponible. Intentá más tarde.'
+          : 'Algo salió mal. Intentá de nuevo.'
     throw new ApiError(
       res.status,
       error?.message ?? message ?? fallback,

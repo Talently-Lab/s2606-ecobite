@@ -3,6 +3,32 @@ import { request } from './http'
 
 afterEach(() => vi.unstubAllGlobals())
 
+it.each(['/delivery/estimate', '/delivery/addresses?q=Belgrano'])(
+  'explica que el servicio no está disponible cuando %s devuelve un 404 HTML',
+  async (path) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('<pre>Cannot find endpoint</pre>', { status: 404 })),
+    )
+    await expect(request(path)).rejects.toMatchObject({
+      status: 404,
+      message: 'El servicio de ubicación y recorridos no está disponible. Intentá más tarde.',
+    })
+  },
+)
+
+it('conserva el error del backend cuando el restaurante no está disponible', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ message: 'El restaurante no está disponible.' }), { status: 404 }),
+      ),
+  )
+  await expect(request('/delivery/estimate')).rejects.toThrow('El restaurante no está disponible.')
+})
+
 it.each([false, true])(
   'interrumpe una cotización que supera el tiempo de espera (leyendo respuesta: %s)',
   async (readingBody) => {

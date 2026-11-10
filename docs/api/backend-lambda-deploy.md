@@ -63,6 +63,7 @@ sam.cmd deploy \
     JwtSecret="$JWT_SECRET" \
     JwtExpiresIn="$JWT_EXPIRES_IN" \
     CorsOrigin="$CORS_ORIGIN" \
+    GeoapifyApiKey="$GEOAPIFY_API_KEY" \
     ImagesBaseUrl="$IMAGES_BASE_URL"
 ```
 
@@ -76,6 +77,7 @@ Variables que el deploy pide:
 - `JWT_EXPIRES_IN`: en este despliegue, `7d`.
 - `CORS_ORIGIN`: origen exacto del frontend. En este despliegue, `http://localhost:5173`.
 - `IMAGES_BASE_URL`: URL base de CloudFront, sin barra final. En este despliegue, `https://dmcut9fuk1tgy.cloudfront.net`. El catálogo arma `imageUrl` con esa base.
+- `GEOAPIFY_API_KEY`: clave privada para buscar direcciones. Sin ella, el GPS sigue disponible, pero la búsqueda de direcciones devuelve 503.
 
 ## Comprobación
 
@@ -87,6 +89,16 @@ curl "https://dq31vqhgc3.execute-api.us-west-2.amazonaws.com/prod/api/restaurant
 ```
 
 Ambas respondieron HTTP 200 después del deploy del 15 de octubre de 2026.
+
+Después de actualizar la API, comprobá también los endpoints de ubicación. Estas solicitudes no guardan pedidos y deben devolver 400 en JSON por datos inválidos; un 404 HTML con `Cannot GET/POST` indica que el backend desplegado aún no incluye las rutas de delivery.
+
+```bash
+curl -i "https://dq31vqhgc3.execute-api.us-west-2.amazonaws.com/prod/api/delivery/addresses?q=a"
+curl -i -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{}' \
+  "https://dq31vqhgc3.execute-api.us-west-2.amazonaws.com/prod/api/delivery/estimate"
+```
 
 ## Límites de este despliegue
 

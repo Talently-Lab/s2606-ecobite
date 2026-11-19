@@ -63,7 +63,8 @@ sam.cmd deploy \
     JwtSecret="$JWT_SECRET" \
     JwtExpiresIn="$JWT_EXPIRES_IN" \
     CorsOrigin="$CORS_ORIGIN" \
-    ImagesBaseUrl="$IMAGES_BASE_URL"
+    ImagesBaseUrl="$IMAGES_BASE_URL" \
+    GeoapifyApiKey="$GEOAPIFY_API_KEY"
 ```
 
 `CAPABILITY_IAM` hace falta porque el template crea el rol de la función. El bucket de artefactos tiene que existir en `us-west-2`.
